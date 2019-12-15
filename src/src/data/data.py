@@ -1,0 +1,172 @@
+import numpy as np
+import netCDF4 as nc4
+import glob
+
+def get_training_data(data_dir, max_samples_wanted, wanted_time_difference=1):
+    filenames = glob.glob(f'{data_dir}/*.nc')
+    #timesteps = {}
+    #data = {}
+    max_samples = 0
+
+    for filename in filenames:
+        sub_file = nc4.Dataset(filename, "r")
+        dummy = sub_file["DUMMY"]
+        max_samples += np.shape(dummy)[0]-wanted_time_difference
+
+    if max_samples_wanted < max_samples:
+        max_samples = max_samples_wanted
+
+    x = np.full((max_samples, 15, 64, 128, 1), np.nan)
+    y = np.full((max_samples, 15, 64, 128, 1), np.nan)
+    current_samples = 0
+
+    for filename in filenames:
+        sub_file = nc4.Dataset(filename, "r")
+        dummy = sub_file["DUMMY"]
+        timesteps = np.shape(dummy)[0]
+
+        for i in range(timesteps-wanted_time_difference):
+            x[current_samples, :, :, :, 0] = dummy[i]
+            y[current_samples, :, :, :, 0] = dummy[i+wanted_time_difference]
+
+            current_samples = current_samples + 1
+
+            # We can return our data immediately
+            if current_samples >= max_samples:
+                return x, y
+
+    return x, y
+
+def get_training_data_1d(data_dir, max_samples_wanted, wanted_time_difference=1):
+    filenames = glob.glob(f'{data_dir}/*.petsc')
+    # timesteps = {}
+    # data = {}
+    max_samples = 0
+
+    max_samples = len(filenames) - wanted_time_difference
+    #for filename in filenames:
+    #    sub_file = nc4.Dataset(filename, "r")
+    #    dummy = sub_file["DUMMY"]
+    #    max_samples += np.shape(dummy)[0] - wanted_time_difference
+
+    if max_samples_wanted < max_samples:
+        max_samples = max_samples_wanted
+
+    x = np.full((max_samples, 52749, 1), np.nan)
+    y = np.full((max_samples, 52749, 1), np.nan)
+    current_samples = 0
+
+    for key, filename in enumerate(filenames):
+        with open(filename, "rb") as file:
+            np.fromfile(file, dtype=">i4", count=1)
+            nvec, = np.fromfile(file, dtype=">i4", count=1)
+            v = np.fromfile(file, dtype=">f8", count=nvec)
+
+            if key < max_samples:
+                x[key, :, 0] = v
+
+            if key >= wanted_time_difference:
+                y[key - wanted_time_difference, :, 0] = v
+                current_samples = current_samples + 1
+
+            if current_samples >= max_samples:
+                return x, y
+
+    return x, y
+
+
+def get_volumes(volume_file):
+    file = nc4.Dataset(volume_file)
+    dummy = file["DUMMY"]
+    volumes = np.full((15, 64, 128), np.nan)
+    volumes[:] = dummy[:]
+
+    return dummy
+
+def get_volumes_1d(volume_file):
+    with open(volume_file, "rb") as file:
+        np.fromfile(file, dtype=">i4", count=1)
+        nvec, = np.fromfile(file, dtype=">i4", count=1)
+        v = np.fromfile(file, dtype=">f8", count=nvec)
+
+    return v
+
+def get_training_data_sequence(samples, num_input_length, num_output_length):
+    x = np.full((samples, num_input_length, 15, 64, 128, 2), np.nan)
+    y = np.full((samples, num_output_length, 15, 64, 128, 2), np.nan)
+
+    for i in range(samples):
+        x[i] = age[i : i + num_input_length]
+        y[i] = age[i + num_input_length : i + num_input_length + num_output_length]
+
+    #Make data 2 dimensional for now
+    #TODO: Remove later
+    x_2d = x[:, :, 0, :, :, :]
+    y_2d = y[:, :, 0, :, :, :]
+
+    #Sanity check
+    #is_finite = np.all(np.isfinite(x_2d)) and np.all(np.isfinite(y_2d))
+    #print("Finite:")
+    #print(is_finite)
+
+    return x_2d, y_2d
+
+#Arrays are assumed to have 4 dimensions according to (time, depth, lat, lon)
+#Assumes array predictions and test data have same dimensions
+def save_as_netcdf(grid_file_path, file_path, predictions, test_data):
+    grid = nc4.Dataset(grid_file_path, "r")
+    new_data = nc4.Dataset(file_path, "w", format="NETCDF4")
+
+    data_shape = np.shape(predictions)
+    new_data.createDimension("time", data_shape[0])
+    new_data.createDimension("depth", data_shape[1])
+    new_data.createDimension("lat", data_shape[2])
+    new_data.createDimension("lon", data_shape[3])
+    new_data.sync()
+
+    for varname, ncvar in grid.variables.items():
+        if varname in ["time", "depth", "lat", "lon"]:
+            var = new_data.createVariable(varname, ncvar.dtype, ncvar.dimensions, zlib=True, fill_value=-9.e+33)
+            attdict = ncvar.__dict__
+            var.setncatts(attdict)
+            if varname == 'time':
+                ncvar = np.zeros(data_shape[0])
+                ncvar[:] = range(0, data_shape[0])
+
+            var[:] = ncvar[:]
+            new_data.sync()
+
+    var = new_data.createVariable('original', "f8", ("time", "depth", "lat", "lon",), zlib=True, fill_value=-9.e+33)
+    var.unit = 1
+    var.description = 'original'
+    var[:] = test_data
+
+    var = new_data.createVariable('model_prediction', "f8", ("time", "depth", "lat", "lon",), zlib=True,
+                                  fill_value=-9.e+33)
+    var.unit = 1
+    var.description = 'model_prediction'
+    var[:] = predictions
+
+    var = new_data.createVariable('diff', "f8", ("time", "depth", "lat", "lon",), zlib=True, fill_value=-9.e+33)
+    var.unit = 1
+    var.description = 'diff'
+    var[:] = test_data - predictions
+
+    new_data.close()
+
+def convert_to_3d(data, grid_file_path):
+    grid = nc4.Dataset(grid_file_path, "r")
+    grid_mask_variable = grid.variables["grid_mask"]
+    grid_mask = grid_mask_variable[0, :, :, :]
+
+    nz, ny, nx = grid_mask.shape
+    work_array = grid_mask.reshape(nz, ny * nx).transpose().flatten()
+
+    data[~work_array.mask, :] = data
+    num_steps = np.shape(data)[0]
+
+    var = np.full((num_steps, 15, 64, 128, 1), np.nan)
+
+    var[:, :, :, :] = data.reshape(ny * nx, nz, num_steps).transpose().reshape(nz, ny, nx, num_steps)
+
+    return var
