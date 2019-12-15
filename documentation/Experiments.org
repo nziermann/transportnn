@@ -1,0 +1,120 @@
+* Modelle
+  Wir haben momentan 2 Modelle:
+  - CNN
+  - RNN
+
+* Visualisierung
+  Zur Visualisierung benutzen wir Panoply. Wir erzeugen entsprechende
+  NetCDF-Dateien mit den folgenden Daten:
+  - original
+  - diff
+  - model_prediction
+
+  Durch die Visualisierung durch Panoply kann dabei sehr gut der Output des
+  Netzwerks nachvollzogen werden. 
+
+* Daten
+  Zur Erzeugung von Testdaten gehen wir folgendermaßen vor:
+  - Wir erzeugen zufällige Startdaten
+  - Wir lesen diese Startdaten in Metos3D ein
+  - Wir erzeugen Testdaten vom Transport
+  
+  Durch Erzeugung von vielen Testdaten hoffen wir, einen weiten Bereich von
+  realisitischen Daten abzudecken.
+
+* CNN
+** Topologie
+   Wir haben ein Netzwerk mit der Struktur eines Autoencoders. Dieser Ansatz hat
+   in unserer vorherigen Masterarbeit gut geklappt.
+
+   #+BEGIN_SRC dot :file images/cnn.png
+   digraph graphname {
+     subgraph overview {
+       I [label="Input layer", shape="box"]
+     
+       M1 [label="1. minimilization layer", shape="box"]
+       I->M1
+     
+       M2 [label="2. minimilization layer", shape="box"]
+       M1->M2
+    
+       U1 [label = "1. Upsampling-Layer", shape="box"]
+       M2->U1
+    
+       U2 [label = "2. Upsampling-Layer", shape="box"]
+       U1->U2
+       label="Overview";
+       graph[style=box];
+     }
+
+     subgraph cluster_min {
+       NM [label= "Input", shape="box"]
+
+       CM [label="convolutional layer", shape="box"]
+       NM->CM
+
+       PM [label = "Pooling-Layer", shape="box"]
+       CM -> PM
+       label="Minimization layer";
+       graph[style=box];
+     }
+     
+     subgraph cluster_up {
+       NU [label= "Input", shape="box"]
+
+       UU [label = "1. Upsampling-Layer", shape="box"]
+       NU->UU
+
+       CU [label="3. convolutional layer", shape="box"]
+       UU->CU
+
+       label="Upsampling Layer";
+       graph[style=box];
+     }
+   }
+   #+END_SRC
+
+   #+RESULTS:
+   [[file:images/cnn.png]]
+
+* RNN
+** Topologie
+   Unser Netzwerk besteht aus 3 Sachen:
+   - Encoder
+   - Decoder
+   - Output
+   
+   #+BEGIN_SRC dot :file images/rnn.png
+   digraph graphname {
+     subgraph overview {
+       E [label="Encoder", shape="box"]
+       D [label="Decoder", shape="box"]
+       O [label="Output", shape="box"]
+
+       E -> D;
+       D -> O;
+
+
+       label="Upsampling Layer";
+       graph[style=box];
+     }
+
+     subgraph encoder {
+       label="Upsampling Layer";
+       graph[style=box];
+     }
+
+     subgraph decoder {
+       label="Upsampling Layer";
+       graph[style=box];
+     }
+
+     subgraph output {
+       label="Upsampling Layer";
+       graph[style=box];
+     }
+   }
+   #+END_SRC
+
+   #+RESULTS:
+   [[file:images/rnn.png]]
