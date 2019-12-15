@@ -1,0 +1,16 @@
+name: transportnn
+channels:
+  - conda-forge
+  - defaults
+prefix: /Users/nilsziermann/miniconda3/envs/transportnn-test
+dependencies:
+  - python=3.7.5
+  - pip=19.3.1
+  - keras=2.3.1
+  - tensorflow-gpu=1.15.0
+  - mako=1.1.0
+  - netCDF4=1.5.3
+  - pip:
+    - pydrive==1.3.1
+    - gradient==0.4.1
+    - talos==0.6.3
