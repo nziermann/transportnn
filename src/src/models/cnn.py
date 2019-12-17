@@ -67,45 +67,6 @@ def get_convolutional_autoencoder(data, config):
     if config.get('land_removal', True):
         output = LandValueRemoval3D(data['land'])(output)
 
-    #Add normalization layer for mass
-    #Handling it this way we can use the model output directly without needing to respect post-processing steps for evaluation and inference
-    # def mass_normalization(volumes, tensors):
-    #     input = tensors[0]
-    #     output = tensors[1]
-    #
-    #     # Produces vectors with
-    #     #input_mass[i] = mass of sample i in batch
-    #     #outpus_mass[i] = mass of output for sample i in batch
-    #     input_mass = input * volumes
-    #     input_mass = K.sum(input_mass, [1,2,3,4])
-    #
-    #     output_mass = output * volumes
-    #     output_mass = K.sum(output_mass, [1,2,3,4])
-    #
-    #     # Together with the broadcasting of the vector this produces a matrix with
-    #     # i,_,_,_,_ = (input_mass[i]/outpus_mass[i])
-    #     # Multiplication with this matrix scales the output for each sample so that the proportions are kept
-    #     # and the output mass is the same as the input mass for each sample in the batch
-    #     vector = (input_mass/output_mass)[np.newaxis][np.newaxis][np.newaxis][np.newaxis]
-    #     vector = K.transpose(vector)
-    #     normalized_output = output * vector
-    #
-    #     return [normalized_output]
-    #
-    # def mass_normalization_output_shape(input_shapes):
-    #     shape1 = list(input_shapes[0])
-    #     shape2 = list(input_shapes[1])
-    #
-    #     assert shape1 == shape2  # else normalization is not possible
-    #     return [tuple(shape2)]
-    #
-    # mass_normalization_partial = partial(mass_normalization, data)
-    # update_wrapper(mass_normalization_partial, mass_normalization)
-    # mass_normalization_layer = Lambda(mass_normalization_partial, mass_normalization_output_shape)([input, output])
-
-    #mass_normalization_layer = MassNormalization3D(data)([input, output])
-
-    #model = Model(inputs=input, outputs=mass_normalization_layer)
 
     if config.get('mass_normalization', True):
         output = MassNormalization3D(data['volumes'])([input, output])

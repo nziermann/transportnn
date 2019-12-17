@@ -127,6 +127,8 @@ def get_training_data_sequence(samples, num_input_length, num_output_length):
 def save_as_netcdf(grid_file_path, file_path, predictions, test_data):
     grid = nc4.Dataset(grid_file_path, "r")
     new_data = nc4.Dataset(file_path, "w", format="NETCDF4")
+    test_data = np.reshape(test_data, (-1, 15, 64, 128))
+    predictions = np.reshape(predictions, (-1, 15, 64, 128))
 
     data_shape = np.shape(predictions)
     new_data.createDimension("time", data_shape[0])
@@ -173,11 +175,19 @@ def convert_to_3d(data, grid_file_path):
     nz, ny, nx = grid_mask.shape
     work_array = grid_mask.reshape(nz, ny * nx).transpose().flatten()
 
-    data[~work_array.mask, :] = data
     num_steps = np.shape(data)[0]
+    data = np.reshape(data, (num_steps, np.shape(data)[1]))
+    new_data = np.zeros((num_steps, np.size(work_array)))
 
-    var = np.full((num_steps, 15, 64, 128, 1), np.nan)
+    print(np.shape(data))
+    print(np.shape(new_data))
+    print(np.shape(work_array))
+    print(np.shape(new_data[:, ~work_array.mask]))
 
-    var[:, :, :, :] = data.reshape(ny * nx, nz, num_steps).transpose().reshape(nz, ny, nx, num_steps)
+    new_data[:, ~work_array.mask] = data
+
+    var = np.full((num_steps, 15, 64, 128), np.nan)
+
+    var[:, :, :, :] = new_data.reshape((num_steps, ny * nx, nz)).transpose((0, 2, 1)).reshape((num_steps, nz, ny, nx))
 
     return var
