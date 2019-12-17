@@ -102,9 +102,6 @@ def get_convolutional_autoencoder_tamila_deep(data, config):
         mass_normalization_layer = MassNormalization1D(data)([input, output])
         model = Model(inputs=input, outputs=mass_normalization_layer)
 
-    model.compile(loss='mean_squared_error', optimizer='sgd', metrics=['mse'])
-
-    model.summary()
     return model
 
 
@@ -135,10 +132,6 @@ def get_convolutional_autoencoder_tamila(data, config):
         mass_normalization_layer = MassNormalization1D(data)([input, output])
         model = Model(inputs=input, outputs=mass_normalization_layer)
 
-    #Compile the model
-    model.compile(loss='mean_squared_error', optimizer ='sgd', metrics = ['mse'])
-
-    model.summary()
     return model
     
 def get_convolutional_autoencoder_climatenn(data, config):
@@ -189,19 +182,11 @@ def get_convolutional_autoencoder_climatenn(data, config):
     sub_model.add(Conv1D(1, kernel_size, activation=activation_last, padding='same'))
     output = sub_model(input)
 
-    optimizer = config.get('optimizer', 'adam')
-
-
     model = Model(inputs=input, outputs=output)
     if config.get('mass_normalization', True):
         mass_normalization_layer = MassNormalization1D(data)([input, output])
         model = Model(inputs=input, outputs=mass_normalization_layer)
     
-    model.compile(optimizer=optimizer, loss='mse', metrics=['mse', keras.metrics.mape, keras.metrics.mae])
-
-    model.summary()
-    print(config)
-
     return model
 
 
@@ -219,6 +204,13 @@ def cnn(data, x_train, y_train, x_val, y_val, params):
     callbacks = []
 
     print("Training model")
+    metrics = ['mse', keras.metrics.mape, keras.metrics.mae]
+    optimizer = params.get('optimizer', 'adam')
+    model.compile(optimizer=optimizer, loss='mse', metrics=['mse', keras.metrics.mape, keras.metrics.mae])
+
+    print(params)
+    model.summary()
+
     out = model.fit(x_train, y_train, epochs=params['epochs'], callbacks=callbacks, validation_data=(x_val, y_val))
 
     return out, model
@@ -227,14 +219,13 @@ p = {
     'filter_exponent': [4],
     'kernel_size': [5],
     'activation': ['elu'],
-    'epochs': [1],
+    'epochs': [100],
     'batch_norm': [False],
     'optimizer': ['adam'],
     'normalize_input_data': [False],
     'normalize_mean_input_data': [True],
-    'model': ['tamila'],
-    #'model': ['climatenn', 'tamila', 'tamila_deep'],
-    'mass_normalization': [False]
+    'model': ['climatenn', 'tamila', 'tamila_deep'],
+    'mass_normalization': [True, False]
 }
 
 single_params = {

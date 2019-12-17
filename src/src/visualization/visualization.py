@@ -2,7 +2,7 @@ import glob
 import numpy as np
 import netCDF4 as nc4
 import os
-from src.data import get_training_data, save_as_netcdf, convert_to_3d
+from src.data import get_training_data, get_training_data_1d, save_as_netcdf, convert_to_3d
 from talos.utils.best_model import best_model
 from keras.models import model_from_json
 from src.layers import MassNormalization1D, MassNormalization3D, LandValueRemoval3D
@@ -29,8 +29,8 @@ def save_data_for_visualization(scan_object, data_dir, samples):
     save_as_netcdf("/storage/other/mitgcm-128x64-grid-file.nc", "/artifacts/model_predictions_2.nc", predictions_2, y_2)
 
 def save_data_for_visualization_1d(scan_object, data_dir, samples):
-    x, y = get_training_data(data_dir, samples, wanted_time_difference=1)
-    x_2, y_2 = get_training_data(data_dir, samples, wanted_time_difference=2)
+    x, y = get_training_data_1d(data_dir, samples, wanted_time_difference=1)
+    x_2, y_2 = get_training_data_1d(data_dir, samples, wanted_time_difference=2)
 
     best_model_id = best_model(scan_object, 'loss', True)
     predict_object = model_from_json(scan_object.saved_models[best_model_id],
@@ -42,7 +42,7 @@ def save_data_for_visualization_1d(scan_object, data_dir, samples):
     predictions = predict_object.predict(x)
 
     predictions = convert_to_3d(predictions, "/storage/other/mitgcm-128x64-grid-file.nc")
-    y = convert_to_3d(predictions, "/storage/other/mitgcm-128x64-grid-file.nc")
+    y = convert_to_3d(y, "/storage/other/mitgcm-128x64-grid-file.nc")
 
     save_as_netcdf("/storage/other/mitgcm-128x64-grid-file.nc", "/artifacts/model_predictions.nc", predictions, y)
 
@@ -50,8 +50,8 @@ def save_data_for_visualization_1d(scan_object, data_dir, samples):
     predictions_1 = predict_object.predict(x_2)
     predictions_2 = predict_object.predict(predictions_1)
 
-    predictions = convert_to_3d(predictions, "/storage/other/mitgcm-128x64-grid-file.nc")
-    y = convert_to_3d(predictions, "/storage/other/mitgcm-128x64-grid-file.nc")
+    predictions_2 = convert_to_3d(predictions_2, "/storage/other/mitgcm-128x64-grid-file.nc")
+    y_2 = convert_to_3d(y_2, "/storage/other/mitgcm-128x64-grid-file.nc")
 
     save_as_netcdf("/storage/other/mitgcm-128x64-grid-file.nc", "/artifacts/model_predictions_2.nc", predictions_2, y_2)
 
