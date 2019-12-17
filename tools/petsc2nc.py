@@ -132,8 +132,9 @@ def write_netcdf_file(vardim, num_time_steps, grid_file, conf_list, petsc_data, 
 
     elif vardim == "3d":
         # 3d
-        work_array = grid_mask.reshape(nz, ny*nx).transpose().flatten()
-        data = np.zeros((np.size(work_array), num_time_steps))
+        work_array = grid_mask.reshape((nz, ny*nx)).transpose().flatten()
+        #data = np.zeros((np.size(work_array), num_time_steps))
+        data = np.zeros((num_time_steps, np.size(work_array)))
         for var_list in conf_list:
             print("Var list: ", var_list)
             var = out_file.createVariable(var_list["name"], "f8", ("time", "depth", "lat", "lon", ), zlib = True, fill_value = -9.e+33)
@@ -143,9 +144,12 @@ def write_netcdf_file(vardim, num_time_steps, grid_file, conf_list, petsc_data, 
             print(np.shape(data))
             print(np.shape(work_array))
             print(np.shape(petsc_data[var_list["name"]]))
-            data[~work_array.mask,:] = petsc_data[var_list["name"]] * var_list["scale"]
-            print("Shape of data: ", np.shape(petsc_data[var_list["name"]]))
-            var[:,:,:,:] = data.reshape(ny*nx, nz, num_time_steps).transpose().reshape(nz, ny, nx, num_time_steps)
+            #data[~work_array.mask,:] = petsc_data[var_list["name"]] * var_list["scale"]
+            data[:, ~work_array.mask] = petsc_data[var_list["name"]] * var_list["scale"]
+            #var[:,:,:,:] = data.reshape(ny*nx, nz, num_time_steps).transpose().reshape(nz, ny, nx, num_time_steps)
+            #var[:,:,:,:] = data.reshape((num_time_steps, ny*nx, nz)).transpose().reshape((num_time_steps, nz, ny, nx))
+            var[:,:,:,:] = data.reshape((num_time_steps, ny*nx, nz)).transpose((0, 2, 1)).reshape((num_time_steps, nz, ny, nx))
+
 
     print(var)
     # close file
@@ -166,15 +170,18 @@ def get_data_from_petsc_file(conf_list, num_time_steps):
         nvec, = np.fromfile(f, dtype=">i4", count=1)
         f.close()
 
-        petsc_data[conf["name"]] = np.zeros((nvec, num_time_steps))
+        #petsc_data[conf["name"]] = np.zeros((nvec, num_time_steps))
+        petsc_data[conf["name"]] = np.zeros((num_time_steps, nvec))
         for i in range(0, num_time_steps):
             petsc_file = "work/{0:0>{padding_length}}-{1}.petsc".format(i, conf["name"].upper(), padding_length=padding_length)
             # read petsc file
             petsc_vec = read_PETSc_vec(petsc_file)
             #store
-            petsc_data[conf["name"]][:,i] = petsc_vec
+            #petsc_data[conf["name"]][:,i] = petsc_vec
+            petsc_data[conf["name"]][i, :] = petsc_vec
             #print("Read data from: ", petsc_file)
         print("Read data for: ", conf["name"])
+
     return petsc_data
 
 #
