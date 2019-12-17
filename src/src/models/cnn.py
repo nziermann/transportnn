@@ -2,8 +2,8 @@ from keras.models import Sequential, Model
 from keras.layers import Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, Input, Lambda
 import keras.metrics
 import numpy as np
-from src.data import get_training_data, get_volumes
-from src.layers import MassNormalization3D
+from src.data import get_training_data, get_volumes, get_landmask
+from src.layers import MassNormalization3D, LandValueRemoval3D
 from functools import partial
 from src.visualization import save_data_for_visualization
 import talos
@@ -64,8 +64,8 @@ def get_convolutional_autoencoder(data, config):
     sub_model.add(Conv3D(1, kernel_size, activation=activation_last, padding='same'))
     output = sub_model(input)
 
-
-    optimizer = config.get('optimizer', 'adam')
+    if config.get('land_removal', True):
+        output = LandValueRemoval3D(data['land'])(output)
 
     #Add normalization layer for mass
     #Handling it this way we can use the model output directly without needing to respect post-processing steps for evaluation and inference
@@ -107,12 +107,11 @@ def get_convolutional_autoencoder(data, config):
 
     #model = Model(inputs=input, outputs=mass_normalization_layer)
 
-
-    model = Model(inputs=input, outputs=output)
     if config.get('mass_normalization', True):
-        mass_normalization_layer = MassNormalization3D(data)([input, output])
-        model = Model(inputs=input, outputs=mass_normalization_layer)
+        output = MassNormalization3D(data['volumes'])([input, output])
 
+    optimizer = config.get('optimizer', 'adam')
+    model = Model(inputs=input, outputs=output)
     model.compile(optimizer=optimizer, loss='mse',  metrics=['mse', keras.metrics.mape, keras.metrics.mae])
 
     model.summary()
@@ -134,30 +133,42 @@ p = {
     'filter_exponent': [4],
     'kernel_size': [(3,3,3)],
     'activation': ['elu'],
-    'epochs': [10],
+    'epochs': [100],
     'batch_norm': [False],
     'optimizer': ['adam'],
     'normalize_input_data': [False],
-    'mass_normalization': [True, False],
+    #'mass_normalization': [True, False],
+    'mass_normalization': [True],
+    #'land_removal': [True, False],
+    'land_removal': [True],
     'normalize_mean_input_data': [False]
 }
 
 data_dir = "/storage/data"
 volumes_file = "/storage/other/normalizedVolumes.nc"
-samples = 1
+grid_file = "/storage/other/mitgcm-128x64-grid-file.nc"
+samples = np.inf
 
 print("Loading data")
 x, y = get_training_data(data_dir, samples)
 print("Loaded data")
 
 print("Loading volumes")
-data = np.reshape(get_volumes(volumes_file), (1, 15, 64, 128, 1))
+volumes = np.reshape(get_volumes(volumes_file), (1, 15, 64, 128, 1))
 print("Loaded volumes")
 
+print("Loading land")
+land = np.reshape(get_landmask(grid_file), (1, 15, 64, 128, 1))
+print("Loaded land")
+
+data = {
+    'volumes': volumes,
+    'land': land
+}
 
 print("Starting model")
 cnn_partial = partial(cnn, data)
 #cnn_partial(x, y, x, y, single_params)
-scan_object = talos.Scan(x=x, y=y, params=p, model=cnn_partial, experiment_name='cnn', val_split=0.0, save_weights=True)
+scan_object = talos.Scan(x=x, y=y, params=p, model=cnn_partial, experiment_name='cnn', x_val=x, y_val=y, save_weights=True)
 
 save_data_for_visualization(scan_object, data_dir, samples)

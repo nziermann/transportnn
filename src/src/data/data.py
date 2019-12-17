@@ -83,6 +83,17 @@ def get_volumes(volume_file):
 
     return dummy
 
+def get_landmask(landmask_file):
+    file = nc4.Dataset(landmask_file)
+    print("Variables")
+    grid_mask = file["grid_mask"]
+    grid_mask = grid_mask[0, :, :, :]
+
+    land_multiplier = np.full((15, 64, 128), 1)
+    land_multiplier[grid_mask.mask] = 0
+
+    return land_multiplier
+
 def get_volumes_1d(volume_file):
     with open(volume_file, "rb") as file:
         np.fromfile(file, dtype=">i4", count=1)

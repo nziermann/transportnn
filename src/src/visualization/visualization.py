@@ -5,7 +5,7 @@ import os
 from src.data import get_training_data, save_as_netcdf, convert_to_3d
 from talos.utils.best_model import best_model
 from keras.models import model_from_json
-from src.layers import MassNormalization1D, MassNormalization3D
+from src.layers import MassNormalization1D, MassNormalization3D, LandValueRemoval3D
 
 def save_data_for_visualization(scan_object, data_dir, samples):
     x, y = get_training_data(data_dir, samples, wanted_time_difference=1)
@@ -14,7 +14,8 @@ def save_data_for_visualization(scan_object, data_dir, samples):
     best_model_id = best_model(scan_object, 'loss', True)
     predict_object = model_from_json(scan_object.saved_models[best_model_id],
                                      {
-                                         'MassNormalization3D': MassNormalization3D
+                                         'MassNormalization3D': MassNormalization3D,
+                                         'LandValueRemoval3D': LandValueRemoval3D
                                      })
     predict_object.set_weights(scan_object.saved_weights[best_model_id])
 
