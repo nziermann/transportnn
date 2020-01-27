@@ -16,6 +16,12 @@ from tensorflow.python.client import device_lib
 # pooling_type
 # activation
 # activation_last
+def get_model(data, config):
+    model = config.get('model', 'climatenn')
+    if model == 'simple':
+        return get_simple_cnn(data, config)
+    return get_convolutional_autoencoder(data, config)
+
 def get_convolutional_autoencoder(data, config):
     model = config.get('model', 'climatenn')
     if model == 'tamila':
@@ -25,6 +31,34 @@ def get_convolutional_autoencoder(data, config):
         return get_convolutional_autoencoder_tamila_deep(data, config)
 
     return get_convolutional_autoencoder_climatenn(data, config)
+
+def get_simple_cnn(data, config):
+    depth = config.get('depth', 6)
+    batch_norm = config.get('batch_norm', False)
+    filter_exponent = config.get('filter_exponent', 4)
+    filters = int(2 ** filter_exponent)
+    kernel_size = config.get('kernel_size', (5, 5, 5))
+    activation = config.get('activation', 'relu')
+
+    inputs = 52749
+    input_shape = (inputs, 1)
+
+    input = Input(shape=input_shape)
+    sub_model = Sequential()
+
+    for i in range(depth):
+        if batch_norm:
+            sub_model.add(BatchNormalization(input_shape=input_shape))
+        sub_model.add(Conv1D(filters, kernel_size, input_shape=input_shape, activation=activation, padding='same'))
+
+    output = sub_model(input)
+    model = Model(inputs=input, outputs=output)
+
+    if config.get('mass_normalization', True):
+        mass_normalization_layer = MassConversation1D(data)([input, output])
+        model = Model(inputs=input, outputs=mass_normalization_layer)
+
+    return model
 
 def get_convolutional_autoencoder_tamila_deep(data, config):
     inputs = 52749

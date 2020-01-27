@@ -8,6 +8,52 @@ from functools import partial
 from src.visualization import save_data_for_visualization
 import talos
 
+
+def get_model(data, config):
+    model_type = config.get('model_type', 'climatenn')
+
+    if model_type == 'simple':
+        return get_simple_convolutional_autoencoder(data, config)
+
+    return get_convolutional_autoencoder(data, config)
+
+
+def get_simple_convolutional_autoencoder(data, config):
+    filter_exponent = config.get('filter_exponent', 4)
+    filters = int(2 ** filter_exponent)
+    kernel_size = config.get('kernel_size', (5, 5, 5))
+    activation = config.get('activation', 'relu')
+    activation_last = config.get('activation_last', activation)
+    batch_norm = config.get('batch_norm', False)
+    depth = config.get('depth', 6)
+
+    input_shape = (15, 64, 128, 1)
+
+    input_layer = Input(shape=input_shape)
+
+    if config.get('land_removal_start', True):
+        input_layer = LandValueRemoval3D(data['land'])(input_layer)
+
+    sub_model = Sequential()
+
+    for i in range(depth):
+        if batch_norm:
+            sub_model.add(BatchNormalization(input_shape=input_shape))
+        sub_model.add(Conv3D(filters, kernel_size, input_shape=input_shape, activation=activation, padding='same'))
+
+    sub_model.add(Conv3D(1, kernel_size, activation=activation_last, padding='same'))
+    output = sub_model(input_layer)
+
+    if config.get('land_removal', True):
+        output = LandValueRemoval3D(data['land'])(output)
+
+    if config.get('mass_normalization', True):
+        output = MassConversation3D(data['volumes'])([input_layer, output])
+
+    model = Model(inputs=input_layer, outputs=output)
+
+    return model
+
 # Currently allowed parameters of config are
 # filter_exponent
 # kernel_size
@@ -15,7 +61,6 @@ import talos
 # activation
 # activation_last
 def get_convolutional_autoencoder(data, config):
-    #TODO Readd higher filter choices as option
     filter_exponent = config.get('filter_exponent', 4)
     filters = int(2**filter_exponent)
     filters_2 = int(filters/2)
@@ -27,8 +72,11 @@ def get_convolutional_autoencoder(data, config):
 
     input_shape = (15, 64, 128, 1)
 
-    input = Input(shape=input_shape)
-    
+    input_layer = Input(shape=input_shape)
+
+    if config.get('land_removal_start', True):
+        input_layer = LandValueRemoval3D(data['land'])(input_layer)
+
     sub_model = Sequential()
     if batch_norm:
         sub_model.add(BatchNormalization(input_shape=input_shape))
@@ -62,7 +110,7 @@ def get_convolutional_autoencoder(data, config):
     # cnn = sub_model(input)
     # output = Conv3D(1, kernel_size, activation=activation_last, padding='same')(cnn)
     sub_model.add(Conv3D(1, kernel_size, activation=activation_last, padding='same'))
-    output = sub_model(input)
+    output = sub_model(input_layer)
 
     if config.get('land_removal', True):
         output = LandValueRemoval3D(data['land'])(output)
@@ -72,19 +120,22 @@ def get_convolutional_autoencoder(data, config):
         output = MassConversation3D(data['volumes'])([input_layer, output])
 
     optimizer = config.get('optimizer', 'adam')
-    model = Model(inputs=input, outputs=output)
+    model = Model(inputs=input_layer, outputs=output)
     model.compile(optimizer=optimizer, loss='mse',  metrics=['mse', keras.metrics.mape, keras.metrics.mae])
 
     model.summary()
     return model
 
 def cnn(data, x_train, y_train, x_val, y_val, params):
-    model = get_convolutional_autoencoder(data, params)
+    model = get_model(data, params)
 
-    early_stopping_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=10, patience=5,
-                                                            restore_best_weights=True)
-    callbacks = [early_stopping_callback]
+    # early_stopping_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=10, patience=5,
+    #                                                        restore_best_weights=True)
+    # callbacks = [early_stopping_callback]
     callbacks = []
+
+    optimizer = params.get('optimizer', 'adam')
+    model.compile(optimizer=optimizer, loss='mse', metrics=['mse', keras.metrics.mape, keras.metrics.mae])
     out = model.fit(x_train, y_train, epochs=params['epochs'], callbacks=callbacks, validation_data=(x_val, y_val))
 
     return out, model
@@ -98,17 +149,17 @@ p = {
     'batch_norm': [False],
     'optimizer': ['adam'],
     'normalize_input_data': [False],
-    #'mass_normalization': [True, False],
-    'mass_normalization': [True],
-    #'land_removal': [True, False],
+    'mass_normalization': [True, False],
     'land_removal': [True],
-    'normalize_mean_input_data': [False]
+    'land_removal_start': [True],
+    'normalize_mean_input_data': [False],
+    'model_type': ['simple', 'climatenn']
 }
 
 data_dir = "/storage/data"
 volumes_file = "/storage/other/normalizedVolumes.nc"
 grid_file = "/storage/other/mitgcm-128x64-grid-file.nc"
-samples = np.inf
+samples = 220
 
 print("Loading data")
 x, y = get_training_data(data_dir, samples)
@@ -129,7 +180,6 @@ data = {
 
 print("Starting model")
 cnn_partial = partial(cnn, data)
-#cnn_partial(x, y, x, y, single_params)
 scan_object = talos.Scan(x=x, y=y, params=p, model=cnn_partial, experiment_name='cnn', x_val=x, y_val=y, save_weights=True)
 
 save_data_for_visualization(scan_object, data_dir, samples)
