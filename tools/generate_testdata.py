@@ -11,10 +11,6 @@ def clear_output_directory(metos3d_output_dir):
         for d in dirs:
             shutil.rmtree(os.path.join(root, d))
 
-def create_test_data(vector_size, metos3d_input_dir, metos3d_input_file):
-    data = generate_random_data(vector_size)
-    write_to_file(os.path.join(metos3d_input_dir, metos3d_input_file), data)
-
 def create_nc_file(current_run, length_of_run, metos3d_output_dir, metos3d_petsc2nc_output_dir, metos3d_petsc2nc, grid_file, petsc2nc_conf):
     #/Users/nilsziermann/.metos3d/metos3d/petsc2nc.py 3d 2880 ~/.metos3d/data/data/mitgcm-128x64-grid-file.nc ~/metos3d/experiments/zero/DUMMY.petsc2nc.conf.yaml ~/metos3d/experiments/zero/DUMMY.nc
     metos3d_petsc2nc_output_file_full = os.path.join(metos3d_petsc2nc_output_dir, f'DUMMY_{current_run}.nc')
@@ -60,15 +56,20 @@ def write_to_file(filename, data):
 
 def normalize_data(data, normalized_value, normalized_volume_file):
     normalized_volumes = read_PETSC_file(normalized_volume_file)
-    print(np.shape(normalized_volumes))
 
     normalized_volumes = np.expand_dims(normalized_volumes, axis=0)
 
     normalized_value = np.full((1,), normalized_value)
     normalized_values = data * normalized_volumes
-    normalized_data = data * (normalized_value / normalized_values)
+    normalized_data = data * (normalized_value / np.sum(normalized_values))
 
     return normalized_data
+
+def get_mass(data, normalized_volume_file):
+    normalized_volumes = read_PETSC_file(normalized_volume_file)
+    normalized_volumes = np.expand_dims(normalized_volumes, axis=0)
+
+    return np.sum(normalized_volumes * data)
 
 metos3d_input_dir = "/tmp/metos3d/input/"
 metos3d_input_file = "DUMMY.petsc"
@@ -84,25 +85,30 @@ grid_file = "/Users/nilsziermann/.metos3d/data/data/mitgcm-128x64-grid-file.nc"
 petsc2nc_conf = "~/metos3d/experiments/zero/DUMMY.petsc2nc.conf.yaml"
 config_template_file_location = "/Users/nilsziermann/.metos3d/metos3d/model/ZERO/options/template.ZERO.option.txt"
 config_file_location="/tmp/metos3d/adapted.ZERO.option.txt"
+spinup_count = 5
+#spinup_count = 1
 vector_size = 52749
 number_of_runs = 10
+#number_of_runs = 1
 length_of_run = 240
+#length_of_run = 1
 output_file_prefix = "$03d-"
+#output_file_prefix = "$01d-"
 normalized_value= 2.17
 normalized_volume_file = "/Users/nilsziermann/.metos3d/data/data/TMM/2.8/Geometry/normalizedVolumes.petsc"
 
 #Generate config file
 mytemplate = Template(filename=config_template_file_location)
-config = mytemplate.render(metos3d_input_dir=metos3d_input_dir, metos3d_input_file=metos3d_input_file, metos3d_output_dir=metos3d_output_dir, metos3d_output_file=metos3d_output_file, length_of_run=length_of_run, output_file_prefix=output_file_prefix)
+config = mytemplate.render(metos3d_input_dir=metos3d_input_dir, metos3d_input_file=metos3d_input_file, metos3d_output_dir=metos3d_output_dir, metos3d_output_file=metos3d_output_file, length_of_run=length_of_run, output_file_prefix=output_file_prefix, spinup_count=spinup_count)
 
 with open(config_file_location, 'w') as f:
     print(config, file=f)
 
-for i in range(1, number_of_runs):
+for i in range(number_of_runs):
     clear_output_directory(metos3d_output_dir)
     data = generate_random_data(vector_size)
     data = normalize_data(data, normalized_value, normalized_volume_file)
+    print(get_mass(data, normalized_volume_file))
     write_to_file(os.path.join(metos3d_input_dir, metos3d_input_file), data)
-    create_test_data(vector_size, metos3d_input_dir, metos3d_input_file)
     call_metos3d(metos3d_location, metos3d_model_simpack, config_file_location)
     create_nc_file(i, length_of_run, metos3d_output_dir, metos3d_petsc2nc_output_dir, metos3d_petsc2nc, grid_file, petsc2nc_conf)
