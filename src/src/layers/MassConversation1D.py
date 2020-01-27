@@ -2,17 +2,17 @@ from keras import backend as K
 from keras.layers import Layer
 import numpy as np
 
-class MassNormalization1D(Layer):
+class MassConversation1D(Layer):
     def __init__(self, volume_data, **kwargs):
         self.volume_data = volume_data
-        super(MassNormalization1D, self).__init__(**kwargs)
+        super(MassConversation1D, self).__init__(**kwargs)
 
     def build(self, input_shape):
         # Create a trainable weight variable for this layer.
         # Has to be a variable to support reloading
         self.volume_kernel = K.variable(self.volume_data)
         self.non_trainable_weights = [self.volume_kernel]
-        super(MassNormalization1D, self).build(input_shape)  # Be sure to call this at the end
+        super(MassConversation1D, self).build(input_shape)  # Be sure to call this at the end
 
     def call(self, inputs, **kwargs):
         input, output = inputs
@@ -38,7 +38,7 @@ class MassNormalization1D(Layer):
 
     def get_config(self):
         config = {'volume_data': self.volume_data}
-        base_config = super(MassNormalization1D, self).get_config()
+        base_config = super(MassConversation1D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
 
     def compute_output_shape(self, input_shape):

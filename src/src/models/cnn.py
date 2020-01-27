@@ -3,7 +3,7 @@ from keras.layers import Conv3D, AveragePooling3D, UpSampling3D, BatchNormalizat
 import keras.metrics
 import numpy as np
 from src.data import get_training_data, get_volumes, get_landmask
-from src.layers import MassNormalization3D, LandValueRemoval3D
+from src.layers import MassConversation3D, LandValueRemoval3D
 from functools import partial
 from src.visualization import save_data_for_visualization
 import talos
@@ -69,7 +69,7 @@ def get_convolutional_autoencoder(data, config):
 
 
     if config.get('mass_normalization', True):
-        output = MassNormalization3D(data['volumes'])([input, output])
+        output = MassConversation3D(data['volumes'])([input_layer, output])
 
     optimizer = config.get('optimizer', 'adam')
     model = Model(inputs=input, outputs=output)

@@ -4,7 +4,7 @@ import keras.metrics
 import numpy as np
 from src.data import get_training_data_1d, get_volumes_1d
 from src.visualization import save_data_for_visualization_1d
-from src.layers import MassNormalization1D
+from src.layers import MassConversation1D
 from functools import partial
 import talos
 
@@ -99,7 +99,7 @@ def get_convolutional_autoencoder_tamila_deep(data, config):
     model = Model(inputs=input, outputs=output)
 
     if config.get('mass_normalization', True):
-        mass_normalization_layer = MassNormalization1D(data)([input, output])
+        mass_normalization_layer = MassConversation1D(data)([input, output])
         model = Model(inputs=input, outputs=mass_normalization_layer)
 
     return model
@@ -129,7 +129,7 @@ def get_convolutional_autoencoder_tamila(data, config):
 
     model = Model(inputs=input, outputs=output)
     if config.get('mass_normalization', True):
-        mass_normalization_layer = MassNormalization1D(data)([input, output])
+        mass_normalization_layer = MassConversation1D(data)([input, output])
         model = Model(inputs=input, outputs=mass_normalization_layer)
 
     return model
@@ -184,7 +184,7 @@ def get_convolutional_autoencoder_climatenn(data, config):
 
     model = Model(inputs=input, outputs=output)
     if config.get('mass_normalization', True):
-        mass_normalization_layer = MassNormalization1D(data)([input, output])
+        mass_normalization_layer = MassConversation1D(data)([input, output])
         model = Model(inputs=input, outputs=mass_normalization_layer)
     
     return model
