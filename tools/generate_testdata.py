@@ -99,7 +99,7 @@ normalized_volume_file = "/Users/nilsziermann/.metos3d/data/data/TMM/2.8/Geometr
 
 #Generate config file
 mytemplate = Template(filename=config_template_file_location)
-config = mytemplate.render(metos3d_input_dir=metos3d_input_dir, metos3d_input_file=metos3d_input_file, metos3d_output_dir=metos3d_output_dir, metos3d_output_file=metos3d_output_file, length_of_run=length_of_run, output_file_prefix=output_file_prefix, spinup_count=spinup_count)
+config = mytemplate.render(metos3d_input_dir=metos3d_input_dir, metos3d_input_file=metos3d_input_file, metos3d_output_dir=metos3d_output_dir, metos3d_output_file=metos3d_output_file, length_of_run=length_of_run, output_file_prefix=output_file_prefix)
 
 with open(config_file_location, 'w') as f:
     print(config, file=f)
