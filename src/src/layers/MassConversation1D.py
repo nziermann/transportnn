@@ -5,6 +5,7 @@ import numpy as np
 class MassConversation1D(Layer):
     def __init__(self, volume_data, **kwargs):
         self.volume_data = volume_data
+        kwargs['trainable'] = False
         super(MassConversation1D, self).__init__(**kwargs)
 
     def build(self, input_shape):

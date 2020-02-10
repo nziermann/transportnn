@@ -6,6 +6,7 @@ import numpy as np
 class LandValueRemoval3D(Layer):
     def __init__(self, land_data, **kwargs):
         self.land_data = land_data
+        kwargs['trainable'] = False
         super(LandValueRemoval3D, self).__init__(**kwargs)
 
     def build(self, input_shape):
