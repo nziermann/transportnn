@@ -7,7 +7,7 @@ from talos.utils.best_model import best_model
 from keras.models import model_from_json
 from src.layers import MassConversation1D, MassConversation3D, LandValueRemoval3D
 
-def save_data_for_visualization(scan_object, data_dir, samples):
+def save_data_for_visualization(scan_object, data_dir, samples, grid_file, job_dir):
     x, y = get_training_data(data_dir, samples, wanted_time_difference=1)
     x_2, y_2 = get_training_data(data_dir, samples, wanted_time_difference=2)
 
@@ -20,15 +20,15 @@ def save_data_for_visualization(scan_object, data_dir, samples):
     predict_object.set_weights(scan_object.saved_weights[best_model_id])
 
     predictions = predict_object.predict(x)
-    save_as_netcdf("/storage/other/mitgcm-128x64-grid-file.nc", "/artifacts/model_predictions.nc", predictions, y)
+    save_as_netcdf(grid_file, f'{job_dir}/model_predictions.nc', predictions, y)
 
     # Generate data for 2 steps based on the best performing model for one step
     predictions_1 = predict_object.predict(x_2)
     predictions_2 = predict_object.predict(predictions_1)
 
-    save_as_netcdf("/storage/other/mitgcm-128x64-grid-file.nc", "/artifacts/model_predictions_2.nc", predictions_2, y_2)
+    save_as_netcdf(grid_file, f'{job_dir}/model_predictions_2.nc', predictions_2, y_2)
 
-def save_data_for_visualization_1d(scan_object, data_dir, samples):
+def save_data_for_visualization_1d(scan_object, data_dir, samples, grid_file, job_dir):
     x, y = get_training_data_1d(data_dir, samples, wanted_time_difference=1)
     x_2, y_2 = get_training_data_1d(data_dir, samples, wanted_time_difference=2)
 
@@ -41,19 +41,19 @@ def save_data_for_visualization_1d(scan_object, data_dir, samples):
 
     predictions = predict_object.predict(x)
 
-    predictions = convert_to_3d(predictions, "/storage/other/mitgcm-128x64-grid-file.nc")
-    y = convert_to_3d(y, "/storage/other/mitgcm-128x64-grid-file.nc")
+    predictions = convert_to_3d(predictions, grid_file)
+    y = convert_to_3d(y, grid_file)
 
-    save_as_netcdf("/storage/other/mitgcm-128x64-grid-file.nc", "/artifacts/model_predictions.nc", predictions, y)
+    save_as_netcdf(grid_file, f'{job_dir}/model_predictions.nc', predictions, y)
 
     # Generate data for 2 steps based on the best performing model for one step
     predictions_1 = predict_object.predict(x_2)
     predictions_2 = predict_object.predict(predictions_1)
 
-    predictions_2 = convert_to_3d(predictions_2, "/storage/other/mitgcm-128x64-grid-file.nc")
-    y_2 = convert_to_3d(y_2, "/storage/other/mitgcm-128x64-grid-file.nc")
+    predictions_2 = convert_to_3d(predictions_2, grid_file)
+    y_2 = convert_to_3d(y_2, grid_file)
 
-    save_as_netcdf("/storage/other/mitgcm-128x64-grid-file.nc", "/artifacts/model_predictions_2.nc", predictions_2, y_2)
+    save_as_netcdf(grid_file, f'{job_dir}/model_predictions_2.nc', predictions_2, y_2)
 
 def get_data_diff(data_dir, model = None, model_prediction = None):
     filenames = glob.glob(f'{data_dir}/*.nc')
