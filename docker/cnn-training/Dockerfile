@@ -7,9 +7,7 @@ USER root
 #Disable hdf5 file locking
 ENV HDF5_USE_FILE_LOCKING=FALSE
 RUN pip install --upgrade netCDF4 numpy gcloud gsutil
-RUN pip install --upgrade tensorboard tensorflow-estimator
-RUN pip install talos
-RUN pip uninstall --yes h5py tensorflow
+RUN pip uninstall --yes h5py
 
 COPY /src /application
 WORKDIR /application

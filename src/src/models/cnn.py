@@ -6,7 +6,6 @@ from src.layers import MassConversation3D, LandValueRemoval3D, LocallyConnected3
 from functools import partial
 from src.visualization import save_data_for_visualization
 from src.data import get_training_data, get_volumes, get_landmask
-import talos
 import itertools
 import json
 import argparse
@@ -252,10 +251,20 @@ def train_models(config, parameters):
 
     print("Starting model")
     cnn_partial = partial(cnn, data)
-    scan_object = talos.Scan(x=x, y=y, params=parameters, model=cnn_partial, experiment_name='cnn', x_val=x, y_val=y,
-                             save_weights=True)
 
-    save_data_for_visualization(scan_object, config['data_dir'], config['samples'], config['grid_file'], config['job_dir'])
+    parameter_combinations = product_dict(**parameters)
+    best_model = None
+    lowest_loss = np.inf
+    for parameter_combination in parameter_combinations:
+        x_train, y_train = x, y
+        x_val, y_val = x, y
+        model, out = cnn_partial(x_train, y_train, x_val, y_val, parameter_combination)
+        model_loss = out.history['loss'][-1]
+
+        if model_loss < lowest_loss:
+            best_model, lowest_loss = model, model_loss
+
+    save_data_for_visualization(best_model, config['data_dir'], config['samples'], config['grid_file'], config['job_dir'])
 
 def get_model_summaries(config, parameters):
     data = get_dummy_data()
@@ -298,7 +307,7 @@ p = {
     'mass_normalization': [False],
     'land_removal': [True],
     'land_removal_start': [True],
-    #'model_type': ['simple']
+    'model_type': ['simple']
     #'model_type': ['simple', 'climatenn']
     #'model_type': ['local']
 }

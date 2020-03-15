@@ -5,8 +5,8 @@ import numpy as np
 from src.data import get_training_data_1d, get_volumes_1d
 from src.visualization import save_data_for_visualization_1d
 from src.layers import MassConversation1D
+from src.models.cnn import product_dict
 from functools import partial
-import talos
 
 from tensorflow.python.client import device_lib
 
@@ -293,7 +293,17 @@ print("Standalone starting")
 x_val = np.full((0, 52749, 1), np.nan)
 y_val = np.full((0, 52749, 1), np.nan)
 
-scan_object = talos.Scan(x=x, y=y, params=p, model=cnn_partial, experiment_name='cnn_1d', x_val=x, y_val=y, save_weights=True)
+parameter_combinations = product_dict(**p)
+best_model = None
+lowest_loss = np.inf
+for parameter_combination in parameter_combinations:
+    x_train, y_train = x, y
+    x_val, y_val = x, y
+    model, out = cnn_partial(x_train, y_train, x_val, y_val, parameter_combination)
+    model_loss = out.history['loss'][-1]
+
+    if model_loss < lowest_loss:
+        best_model, lowest_loss = model, model_loss
 
 # Save data for later visualization
-save_data_for_visualization_1d(scan_object, data_dir, samples)
+save_data_for_visualization_1d(best_model, data_dir, samples)

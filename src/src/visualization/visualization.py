@@ -3,43 +3,27 @@ import numpy as np
 import netCDF4 as nc4
 import os
 from src.data import get_training_data, get_training_data_1d, save_as_netcdf, convert_to_3d
-from talos.utils.best_model import best_model
 from keras.models import model_from_json
 from src.layers import MassConversation1D, MassConversation3D, LandValueRemoval3D
 
-def save_data_for_visualization(scan_object, data_dir, samples, grid_file, job_dir):
+def save_data_for_visualization(best_model, data_dir, samples, grid_file, job_dir):
     x, y = get_training_data(data_dir, samples, wanted_time_difference=1)
     x_2, y_2 = get_training_data(data_dir, samples, wanted_time_difference=2)
 
-    best_model_id = best_model(scan_object, 'loss', True)
-    predict_object = model_from_json(scan_object.saved_models[best_model_id],
-                                     {
-                                         'MassConversation3D': MassConversation3D,
-                                         'LandValueRemoval3D': LandValueRemoval3D
-                                     })
-    predict_object.set_weights(scan_object.saved_weights[best_model_id])
-
-    predictions = predict_object.predict(x)
+    predictions = best_model.predict(x)
     save_as_netcdf(grid_file, f'{job_dir}/model_predictions.nc', predictions, y)
 
     # Generate data for 2 steps based on the best performing model for one step
-    predictions_1 = predict_object.predict(x_2)
-    predictions_2 = predict_object.predict(predictions_1)
+    predictions_1 = best_model.predict(x_2)
+    predictions_2 = best_model.predict(predictions_1)
 
     save_as_netcdf(grid_file, f'{job_dir}/model_predictions_2.nc', predictions_2, y_2)
 
-def save_data_for_visualization_1d(scan_object, data_dir, samples, grid_file, job_dir):
+def save_data_for_visualization_1d(best_model, data_dir, samples, grid_file, job_dir):
     x, y = get_training_data_1d(data_dir, samples, wanted_time_difference=1)
     x_2, y_2 = get_training_data_1d(data_dir, samples, wanted_time_difference=2)
 
-    best_model_id = best_model(scan_object, 'loss', True)
-    predict_object = model_from_json(scan_object.saved_models[best_model_id],
-                                     {
-                                         'MassConversation1D': MassConversation1D
-                                     })
-    predict_object.set_weights(scan_object.saved_weights[best_model_id])
-
-    predictions = predict_object.predict(x)
+    predictions = best_model.predict(x)
 
     predictions = convert_to_3d(predictions, grid_file)
     y = convert_to_3d(y, grid_file)
@@ -47,8 +31,8 @@ def save_data_for_visualization_1d(scan_object, data_dir, samples, grid_file, jo
     save_as_netcdf(grid_file, f'{job_dir}/model_predictions.nc', predictions, y)
 
     # Generate data for 2 steps based on the best performing model for one step
-    predictions_1 = predict_object.predict(x_2)
-    predictions_2 = predict_object.predict(predictions_1)
+    predictions_1 = best_model.predict(x_2)
+    predictions_2 = best_model.predict(predictions_1)
 
     predictions_2 = convert_to_3d(predictions_2, grid_file)
     y_2 = convert_to_3d(y_2, grid_file)
