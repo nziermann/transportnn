@@ -342,10 +342,11 @@ config = {
     'job_dir': args.job_dir,
     'volumes_file': args.volumes_file,
     'grid_file': args.grid_file,
-    'samples': args.samples
+    'samples': args.samples,
+    'validation_data': args.validation_data
 }
 
-if not args.download_from is None:
+if args.download_from is not None:
     subprocess.check_call(['gsutil', '-m' , 'cp', '-r', args.download_from, '/tmp'])
 
 print(config)
@@ -355,3 +356,6 @@ if args.print_summaries:
     get_model_summaries(config, parameters)
 else:
     train_models(config, parameters)
+
+if args.upload_to is not None:
+    subprocess.check_call(['gsutil', '-m' , 'cp', '-r', args.upload_to, config['job_dir']])
