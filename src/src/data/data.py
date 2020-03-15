@@ -37,6 +37,12 @@ def get_training_data(data_dir, max_samples_wanted, wanted_time_difference=1):
 
     return x, y
 
+def load_netcdf_data(filename):
+    sub_file = nc4.Dataset(filename, "r")
+    dummy = sub_file["DUMMY"]
+
+    return dummy
+
 def get_training_data_1d(data_dir, max_samples_wanted, wanted_time_difference=1):
     filenames = glob.glob(f'{data_dir}/*.petsc')
     # timesteps = {}

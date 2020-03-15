@@ -4,8 +4,8 @@ import keras.metrics
 import numpy as np
 from src.layers import MassConversation3D, LandValueRemoval3D, LocallyConnected3D
 from functools import partial
-from src.visualization import save_data_for_visualization
-from src.data import get_training_data, get_volumes, get_landmask
+from src.visualization import save_data_for_visualization, save_as_netcdf
+from src.data import get_training_data, get_volumes, get_landmask, load_netcdf_data
 import itertools
 import json
 import argparse
@@ -236,6 +236,12 @@ def train_models(config, parameters):
     x, y = get_training_data(config['data_dir'], config['samples'])
     print("Loaded data")
 
+    validation_data = None
+    if config['validation_data'] is not None:
+        print("Loading validation data")
+        validation_data = load_netcdf_data(config['validation_data'])
+        print("Loaded validation data")
+
     print("Loading volumes")
     volumes = np.reshape(get_volumes(config['volumes_file']), (1, 15, 64, 128, 1))
     print("Loaded volumes")
@@ -264,7 +270,20 @@ def train_models(config, parameters):
         if model_loss < lowest_loss:
             best_model, lowest_loss = model, model_loss
 
+    if validation_data is not None:
+        predict_validations(best_model, validation_data, config)
+
     save_data_for_visualization(best_model, config['data_dir'], config['samples'], config['grid_file'], config['job_dir'])
+
+def predict_validations(model, validation_data, config):
+    start = validation_data[0]
+    samples = np.size(validation_data, 0)
+    predictions = np.full((samples, 15, 64, 128, 1), np.nan)
+    for i, y in enumerate(validation_data[1:], start=1):
+        predictions[i] = model.predict(start)
+        start = predictions[i]
+
+    save_as_netcdf(config['grid_file'], f'{config["job_dir"]}/model_predictions_validation.nc', predictions, validation_data)
 
 def get_model_summaries(config, parameters):
     data = get_dummy_data()
@@ -329,7 +348,9 @@ parser.add_argument("--volumes-file", help="", default=defaults['volumes_file'])
 parser.add_argument("--grid-file", help="", default=defaults['grid_file'])
 parser.add_argument("--samples", help="", default=defaults['samples'])
 parser.add_argument("--print-summaries", help="", action="store_true", default=False)
+parser.add_argument("--validation-data", default=None)
 parser.add_argument("--download-from", help="", default=None)
+parser.add_argument("--upload-to", help="", default=None)
 args = parser.parse_args()
 
 parameters = p
