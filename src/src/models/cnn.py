@@ -12,6 +12,7 @@ import argparse
 import subprocess
 import os
 import keras.backend as K
+import glob
 
 def get_model(data, config):
     model_type = config.get('model_type', 'climatenn')
@@ -94,7 +95,6 @@ def get_simple_convolutional_autoencoder(data, config):
     output = sub_model(start_layer)
 
     sub_model.summary()
-    exit()
 
     if config.get('land_removal', True):
         output = LandValueRemoval3D(data['land'])(output)
@@ -234,20 +234,25 @@ def cnn(data, x_train, y_train, x_val, y_val, params):
 def train_models(config, parameters):
     print("Loading data")
     x, y = get_training_data(config['data_dir'], config['samples'])
+    assert not np.any(np.isnan(x)), "X contains nan data"
+    assert not np.any(np.isnan(y)), "Y contains nan data"
     print("Loaded data")
 
     validation_data = None
     if config['validation_data'] is not None:
         print("Loading validation data")
         validation_data = load_netcdf_data(config['validation_data'])
+        assert not np.any(np.isnan(validation_data)), "Validation data contains nan data"
         print("Loaded validation data")
 
     print("Loading volumes")
     volumes = np.reshape(get_volumes(config['volumes_file']), (1, 15, 64, 128, 1))
+    assert not np.any(np.isnan(volumes)), "Volumes data contains nan data"
     print("Loaded volumes")
 
     print("Loading land")
     land = np.reshape(get_landmask(config['grid_file']), (1, 15, 64, 128, 1))
+    assert not np.any(np.isnan(land)), "Land data contains nan data"
     print("Loaded land")
 
     data = {
@@ -260,15 +265,24 @@ def train_models(config, parameters):
 
     parameter_combinations = product_dict(**parameters)
     best_model = None
+    first_model = None
     lowest_loss = np.inf
     for parameter_combination in parameter_combinations:
         x_train, y_train = x, y
         x_val, y_val = x, y
-        model, out = cnn_partial(x_train, y_train, x_val, y_val, parameter_combination)
+        out, model = cnn_partial(x_train, y_train, x_val, y_val, parameter_combination)
+
+        if first_model is None:
+            first_model = model
+
         model_loss = out.history['loss'][-1]
+        print(f'Model loss: {model_loss}')
 
         if model_loss < lowest_loss:
             best_model, lowest_loss = model, model_loss
+
+    if best_model is None:
+        best_model = first_model
 
     if validation_data is not None:
         predict_validations(best_model, validation_data, config)
@@ -312,14 +326,12 @@ def get_dummy_data():
 
     return data
 
-dtype='float16'
-K.set_floatx(dtype)
-
 p = {
     'filter_exponent': [4],
     'kernel_size': [(3, 3, 3)],
     'activation': ['elu'],
-    'epochs': [100],
+    #'epochs': [100],
+    'epochs': [1],
     'batch_norm': [False],
     'optimizer': ['adam'],
     #'mass_normalization': [True, False],
@@ -378,5 +390,18 @@ if args.print_summaries:
 else:
     train_models(config, parameters)
 
+print("Upload to:")
+print(args.upload_to)
 if args.upload_to is not None:
-    subprocess.check_call(['gsutil', '-m' , 'cp', '-r', args.upload_to, config['job_dir']])
+    print("Uploading")
+    print(f'Upload to: {args.upload_to}')
+    print(f'Job dir: {config["job_dir"]}')
+    print(f'Call: gsutil -m cp -r {config["job_dir"]} {args.upload_to}')
+
+    print("Files in folder:")
+    files = [f for f in glob.glob(config['job_dir'] + "**/*.nc", recursive=True)]
+
+    for f in files:
+        print(f)
+
+    subprocess.check_call(['gsutil', '-m' , 'cp', '-r', config['job_dir'], args.upload_to])
