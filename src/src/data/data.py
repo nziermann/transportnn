@@ -2,6 +2,52 @@ import numpy as np
 import netCDF4 as nc4
 import glob
 
+def split_data(data, axis, num_sub, overlap=True, wraparound=True):
+    assert num_sub > 1
+
+    length = np.size(data, axis=axis)
+    split_length = length//num_sub
+
+    split_starts = []
+    split_ends = []
+    first_split_start = 0
+    if overlap and wraparound:
+        first_split_start = -1
+    split_starts.append(first_split_start)
+
+    first_split_end = split_length - 1
+    if overlap:
+        first_split_end = first_split_end + 1
+    split_ends.append(first_split_end)
+
+    for i in range(1, num_sub - 1):
+        split_start = i * split_length
+        if overlap:
+            split_start = split_start - 1
+        split_starts.append(split_start)
+
+        split_end = (i+1) *split_length - 1
+        if overlap:
+            split_end = split_end + 1
+        split_ends.append(split_end)
+
+    last_split_start = (num_sub - 1) * split_length
+    if overlap and wraparound:
+        last_split_start = last_split_start - 1
+    split_starts.append(last_split_start)
+
+    last_split_end = length - 1
+    if overlap:
+        last_split_end = last_split_end + 1
+    split_ends.append(last_split_end)
+
+    split_data_array = []
+    for i in range(0, num_sub):
+        split_data_array.append((np.take(data, range(split_starts[i], split_ends[i]+1), axis=axis, mode='wrap')))
+
+    return split_data_array
+
+
 def get_training_data(data_dir, max_samples_wanted, wanted_time_difference=1):
     filenames = glob.glob(f'{data_dir}/*.nc')
     #timesteps = {}
