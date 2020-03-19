@@ -47,6 +47,19 @@ def split_data(data, axis, num_sub, overlap=True, wraparound=True):
 
     return split_data_array
 
+# We currently assume no overlap of the data and a specific order found in split
+def combine_data(data):
+    for sub_data in data:
+        print(np.shape(sub_data))
+
+    samples = np.size(data[0], axis=0)
+    full_data = np.full((samples, 15, 64, 128), np.nan)
+    full_data[:, :, 0:32, 0:64] = data[0]
+    full_data[:, :, 0:32, 64:128] = data[1]
+    full_data[:, :, 32:64, 0:64] = data[2]
+    full_data[:, :, 32:64, 64:128] = data[3]
+
+    return full_data
 
 def get_training_data(data_dir, max_samples_wanted, wanted_time_difference=1):
     filenames = glob.glob(f'{data_dir}/*.nc')
