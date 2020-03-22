@@ -303,16 +303,17 @@ def predict_validations_split(models, validation_data, validation_data_split, co
     starts = map(lambda validation_element: validation_element[0], validation_data_split)
     starts = list(map(lambda start: start[np.newaxis], starts))
     samples = np.size(validation_data_split[0], 0)
-    predictions = np.full((samples, 15, 64, 128, 1), np.nan)
+    predictions = np.full((samples-1, 15, 64, 128, 1), np.nan)
     for i in range(1, len(validation_data_split)):
         sub_predictions = []
-        for j, model in enumerate(models, start=1):
+        for j, model in enumerate(models, start=0):
             sub_predictions.append(model.predict(starts[j]))
 
-        predictions[i] = combine_data(sub_predictions)
+        predictions[i-1] = combine_data(sub_predictions)
         starts = sub_predictions
 
-    save_as_netcdf(config['grid_file'], f'{config["job_dir"]}/model_predictions_validation.nc', predictions, validation_data)
+    save_as_netcdf(config['grid_file'], f'{config["job_dir"]}/model_predictions_validation.nc',
+                   predictions, validation_data[1:])
 
 def train_models(config, parameters):
     print("Loading data")
