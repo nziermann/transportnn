@@ -12,7 +12,8 @@ import glob
 from keras.models import Sequential, Model
 from keras.layers import Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, Input, ZeroPadding3D
 import keras.metrics
-
+from tensorflow.compat.v1 import ConfigProto
+from tensorflow.compat.v1 import InteractiveSession
 
 def get_model(data, config):
     model_type = config.get('model_type', 'climatenn')
@@ -420,6 +421,10 @@ def get_dummy_data():
 
 
 def main():
+    config = ConfigProto()
+    config.gpu_options.allow_growth = True
+    session = InteractiveSession(config=config)
+
     p = {
         'filter_exponent': [4],
         'kernel_size': [(3, 3, 3)],
@@ -432,9 +437,9 @@ def main():
         'mass_normalization': [False],
         'land_removal': [True],
         'land_removal_start': [True],
+        # 'model_type': ['local']
         'model_type': ['simple']
         # 'model_type': ['simple', 'climatenn']
-        # 'model_type': ['local']
     }
 
     defaults = {
