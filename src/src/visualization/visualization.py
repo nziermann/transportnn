@@ -5,6 +5,8 @@ import os
 from src.data import get_training_data, get_training_data_1d, save_as_netcdf, convert_to_3d
 from keras.models import model_from_json
 from src.layers import MassConversation1D, MassConversation3D, LandValueRemoval3D
+import matplotlib.pyplot as plt
+import itertools
 
 def save_data_for_visualization(best_model, data_dir, samples, grid_file, job_dir):
     x, y = get_training_data(data_dir, samples, wanted_time_difference=1)
@@ -98,3 +100,48 @@ def get_data_diff(data_dir, model = None, model_prediction = None):
         new_data.close()
 
     return None
+
+# This method assumes the same format we use otherwise
+# So first step is the timestep
+def plot_data(datasets, method, ylabel=None, plot_labels=[]):
+    timesteps = np.size(datasets[0], axis=0)
+    plot_labels_iter = itertools.chain(plot_labels, itertools.repeat(None))
+
+    for data, plot_label in zip(datasets, plot_labels_iter):
+        print("Converting data")
+        print(f'Plot label: {plot_label}')
+        datapoints = np.full(timesteps, np.nan)
+        points = [method(data[i]) for i in range(timesteps)]
+        datapoints[:] = points
+        plt.plot(datapoints, label=plot_label)
+
+    if plot_labels:
+        plt.legend()
+    plt.ylabel(ylabel)
+    plt.xlabel("Timestep")
+    plt.show()
+
+def main():
+
+    filename = "/home/nilsz/git/transportnn/data/downloaded_data/model_predictions_complete_validation_data.nc"
+    data = nc4.Dataset(filename, "r")
+    datasets = [data['original'], data['model_prediction'], np.abs(data['diff'])]
+
+    #assert not np.any(np.isnan(datasets)), "Contains nan data"
+
+    plot_data(datasets, np.mean, ylabel="Mean validation data", plot_labels=['Original', 'Model', 'Difference'])
+    plot_data(datasets, np.ndarray.max, ylabel="Max validation data", plot_labels=['Original', 'Model', 'Difference'])
+
+    filename = "/home/nilsz/git/transportnn/data/downloaded_data/model_predictions_complete.nc"
+    data = nc4.Dataset(filename, "r")
+    datasets = [data['original'], data['model_prediction'], np.abs(data['diff'])]
+
+    #assert not np.any(np.isnan(datasets)), "Contains nan data"
+
+    plot_data(datasets, np.mean, ylabel="Mean training data", plot_labels=['Original', 'Model', 'Difference'])
+    plot_data(datasets, np.ndarray.max, ylabel="Max training data", plot_labels=['Original', 'Model', 'Difference'])
+
+
+if __name__ == '__main__':
+    main()
+
