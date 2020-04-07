@@ -60,6 +60,10 @@ def combine_data(data):
     full_data[:, :, 32:64, 0:64, :] = data[2]
     full_data[:, :, 32:64, 64:128, :] = data[3]
 
+    print("Nan indices:")
+    nan_indices = np.argwhere(full_data == np.nan)
+    print(nan_indices)
+
     return full_data
 
 
