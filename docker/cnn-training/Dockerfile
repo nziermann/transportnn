@@ -1,4 +1,4 @@
-FROM ufoym/deepo:keras-py36
+FROM ufoym/deepo:keras-py36 as dev
 
 MAINTAINER Nils Ziermann <docker@nilsziermann.de>
 
@@ -13,6 +13,7 @@ RUN /root/miniconda/bin/pip install gcloud gsutil
 # If problems occur remove tensorflow-gpu from conda install and move to pip install
 RUN pip install gsutil
 
+FROM dev as complete
 COPY /src /application
 RUN py3clean /application
 

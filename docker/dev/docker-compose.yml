@@ -1,0 +1,13 @@
+version: '2.3'
+services:
+    cnn-training:
+        runtime: nvidia
+        command: tail -f /dev/null
+        build:
+            context: .
+            dockerfile: ./docker/cnn-training/Dockerfile
+            target: dev
+        volumes:
+            - ${BASE}/data:/storage
+            - ${BASE}/src:/application
+            - ${BASE}/data/artifacts:/artifacts
