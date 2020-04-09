@@ -1,5 +1,5 @@
 import numpy as np
-from src.layers import MassConversation3D, LandValueRemoval3D, LocallyConnected3D
+from src.layers import MassConversation3D, LandValueRemoval3D, LocallyConnected3D, WrapAroundPadding3D
 from functools import partial
 from src.visualization import save_data_for_visualization, save_as_netcdf
 from src.data import get_training_data, get_volumes, get_landmask, load_netcdf_data, split_data, combine_data
@@ -87,11 +87,17 @@ def get_simple_convolutional_autoencoder(data, config):
     for i in range(depth):
         if batch_norm:
             sub_model.add(BatchNormalization(input_shape=input_shape))
-        convi = Conv3D(filters, kernel_size, input_shape=input_shape, activation=activation, padding='same')
-        sub_model.add(convi)
 
-    conv = Conv3D(1, kernel_size, activation=activation_last, padding='same')
-    sub_model.add(conv)
+
+        #sub_model.add(ZeroPadding3D((1, 1, 1)))
+        sub_model.add(ZeroPadding3D((1, 0, 0)))
+        sub_model.add(WrapAroundPadding3D((0, 1, 1)))
+        sub_model.add(Conv3D(filters, kernel_size, input_shape=input_shape, activation=activation))
+
+    #sub_model.add(ZeroPadding3D((1, 1, 1)))
+    sub_model.add(ZeroPadding3D((1, 0, 0)))
+    sub_model.add(WrapAroundPadding3D((0, 1, 1)))
+    sub_model.add(Conv3D(1, kernel_size, activation=activation_last))
     output = sub_model(start_layer)
 
     sub_model.summary()
