@@ -76,39 +76,34 @@ def get_simple_convolutional_autoencoder(data, config):
     depth = config.get('depth', 6)
     input_shape = config.get('input_shape', (15, 64, 128, 1))
 
-    input_layer = Input(shape=input_shape)
-    start_layer = input_layer
+    inputs = Input(shape=input_shape)
+    x = inputs
 
     if config.get('land_removal_start', True):
-        start_layer = LandValueRemoval3D(data['land'])(start_layer)
-
-    sub_model = Sequential()
+        x = LandValueRemoval3D(data['land'])(x)
 
     for i in range(depth):
         if batch_norm:
-            sub_model.add(BatchNormalization(input_shape=input_shape))
+            x = BatchNormalization()(x)
 
+        #x = ZeroPadding3D((1, 1, 1))(x)
+        x = ZeroPadding3D((1, 0, 0))(x)
+        x = WrapAroundPadding3D((0, 1, 1))(x)
+        x = Conv3D(filters, kernel_size, activation=activation)(x)
 
-        #sub_model.add(ZeroPadding3D((1, 1, 1)))
-        sub_model.add(ZeroPadding3D((1, 0, 0)))
-        sub_model.add(WrapAroundPadding3D((0, 1, 1)))
-        sub_model.add(Conv3D(filters, kernel_size, input_shape=input_shape, activation=activation))
-
-    #sub_model.add(ZeroPadding3D((1, 1, 1)))
-    sub_model.add(ZeroPadding3D((1, 0, 0)))
-    sub_model.add(WrapAroundPadding3D((0, 1, 1)))
-    sub_model.add(Conv3D(1, kernel_size, activation=activation_last))
-    output = sub_model(start_layer)
-
-    sub_model.summary()
+    #x = ZeroPadding3D((1, 1, 1))(x)
+    x = ZeroPadding3D((1, 0, 0))(x)
+    x = WrapAroundPadding3D((0, 1, 1))(x)
+    x = Conv3D(1, kernel_size, activation=activation_last)(x)
 
     if config.get('land_removal', True):
-        output = LandValueRemoval3D(data['land'])(output)
+        x = LandValueRemoval3D(data['land'])(x)
 
     if config.get('mass_normalization', True):
-        output = MassConversation3D(data['volumes'])([start_layer, output])
+        x = MassConversation3D(data['volumes'])([inputs, x])
 
-    model = Model(inputs=input_layer, outputs=output)
+    model = Model(inputs=inputs, outputs=x)
+    model.summary()
 
     return model
 
