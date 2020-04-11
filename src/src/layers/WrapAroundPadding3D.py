@@ -1,5 +1,4 @@
-from keras import backend as K
-from keras.layers import Layer
+from tensorflow.keras.layers import Layer
 import tensorflow as tf
 
 
@@ -20,7 +19,10 @@ class WrapAroundPadding3D(Layer):
         partial_output_2 = self.wrap_around_data(partial_output_1, 2, self.padding[1])
         output = self.wrap_around_data(partial_output_2, 3, self.padding[2])
 
-        return [output]
+        return output
+
+    def get_config(self):
+        return {'padding' : self.padding}
 
     def compute_output_shape(self, input_shape):
         output_shape = list(input_shape)

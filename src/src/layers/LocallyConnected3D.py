@@ -5,16 +5,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from keras import backend as K
-from keras import activations
-from keras import initializers
-from keras import regularizers
-from keras import constraints
-from keras.engine.base_layer import Layer
-from keras.engine.base_layer import InputSpec
-from keras.utils import conv_utils
-from keras.legacy import interfaces
-from keras.backend import tensorflow_backend as tfK
+from tensorflow.python.keras import activations
+from tensorflow.python.keras import initializers
+from tensorflow.python.keras import regularizers
+from tensorflow.python.keras import constraints
+from tensorflow.python.keras.engine.base_layer import Layer
+from tensorflow.python.keras.engine.input_spec import InputSpec
+from tensorflow.python.keras.utils import conv_utils
+from tensorflow.python.keras.utils import tf_utils
 
 
 class LocallyConnected3D(Layer):
@@ -61,7 +59,7 @@ class LocallyConnected3D(Layer):
             corresponds to inputs with shape
             `(batch, channels, height, width)`.
             It defaults to the `image_data_format` value found in your
-            Keras config file at `~/.keras/keras.json`.
+            tensorflow.keras config file at `~/.tensorflow.keras/tensorflow.keras.json`.
             If you never set it, then it will be "channels_last".
         activation: Activation function to use
             (see [activations](../activations.md)).
@@ -99,7 +97,6 @@ class LocallyConnected3D(Layer):
         `rows` and `cols` values might have changed due to padding.
     """
 
-    @interfaces.legacy_conv3d_support
     def __init__(self, filters,
                  kernel_size,
                  strides=(1, 1, 1),
@@ -135,6 +132,7 @@ class LocallyConnected3D(Layer):
         self.bias_constraint = constraints.get(bias_constraint)
         self.input_spec = InputSpec(ndim=5)
 
+    @tf_utils.shape_type_conversion
     def build(self, input_shape):
         if self.data_format == 'channels_first':
             channel_axis = 1
@@ -181,6 +179,7 @@ class LocallyConnected3D(Layer):
         self.input_spec = InputSpec(ndim=5, axes={channel_axis: input_filter})
         super(LocallyConnected3D, self).build(input_shape)
 
+    @tf_utils.shape_type_conversion
     def compute_output_shape(self, input_shape):
         if self.data_format == 'channels_first':
             rows = input_shape[2]

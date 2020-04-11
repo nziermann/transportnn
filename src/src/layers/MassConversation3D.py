@@ -1,18 +1,19 @@
-from keras import backend as K
-from keras.layers import Layer
+from tensorflow.keras import backend as K
+from tensorflow.keras.layers import Layer
 import numpy as np
+import tensorflow as tf
+
 
 class MassConversation3D(Layer):
     def __init__(self, volume_data, **kwargs):
         self.volume_data = volume_data
+        self.volume_kernel = tf.Variable(self.volume_data, trainable=False, dtype=tf.float32)
         kwargs['trainable'] = False
         super(MassConversation3D, self).__init__(**kwargs)
 
     def build(self, input_shape):
         # Create a trainable weight variable for this layer.
         # Has to be a variable to support reloading
-        self.volume_kernel = K.variable(self.volume_data)
-        self.non_trainable_weights = [self.volume_kernel]
         super(MassConversation3D, self).build(input_shape)  # Be sure to call this at the end
 
     def call(self, inputs, **kwargs):
@@ -38,9 +39,7 @@ class MassConversation3D(Layer):
         return [normalized_output]
 
     def get_config(self):
-        config = {'volume_data': self.volume_data}
-        base_config = super(MassConversation3D, self).get_config()
-        return dict(list(base_config.items()) + list(config.items()))
+        return {'volume_data': self.volume_data}
 
     def compute_output_shape(self, input_shape):
         assert isinstance(input_shape, list)

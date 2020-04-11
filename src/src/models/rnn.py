@@ -1,6 +1,6 @@
-from keras.layers.convolutional_recurrent import ConvLSTM2D
-from keras.layers import RepeatVector, Reshape, TimeDistributed, Conv2D
-from keras.models import Sequential
+from tensorflow.keras.layers.convolutional_recurrent import ConvLSTM2D
+from tensorflow.keras.layers import RepeatVector, Reshape, TimeDistributed, Conv2D
+from tensorflow.keras.models import Sequential
 import talos
 
 

@@ -1,6 +1,6 @@
-from keras.models import Sequential, Model
-from keras.layers import Conv1D, AveragePooling1D, UpSampling1D, BatchNormalization, Input, Dense, Flatten, ZeroPadding1D
-import keras.metrics
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Conv1D, AveragePooling1D, UpSampling1D, BatchNormalization, Input, Dense, Flatten, ZeroPadding1D
+import tensorflow.keras.metrics
 import numpy as np
 from src.data import get_training_data_1d, get_volumes_1d
 from src.visualization import save_data_for_visualization_1d
@@ -232,15 +232,15 @@ def cnn(data, x_train, y_train, x_val, y_val, params):
 
     print("Got model")
 
-    early_stopping_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=10, patience=5,
+    early_stopping_callback = tensorflow.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=10, patience=5,
                                                             restore_best_weights=True)
     callbacks = [early_stopping_callback]
     callbacks = []
 
     print("Training model")
-    metrics = ['mse', keras.metrics.mape, keras.metrics.mae]
+    metrics = ['mse', tensorflow.keras.metrics.mape, tensorflow.keras.metrics.mae]
     optimizer = params.get('optimizer', 'adam')
-    model.compile(optimizer=optimizer, loss='mse', metrics=['mse', keras.metrics.mape, keras.metrics.mae])
+    model.compile(optimizer=optimizer, loss='mse', metrics=['mse', tensorflow.keras.metrics.mape, tensorflow.keras.metrics.mae])
 
     print(params)
     model.summary()

@@ -3,7 +3,7 @@ import numpy as np
 import netCDF4 as nc4
 import os
 from src.data import get_training_data, get_training_data_1d, save_as_netcdf, convert_to_3d
-from keras.models import model_from_json
+from tensorflow.keras.models import model_from_json
 from src.layers import MassConversation1D, MassConversation3D, LandValueRemoval3D
 import matplotlib.pyplot as plt
 import itertools

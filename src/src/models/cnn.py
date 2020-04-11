@@ -9,9 +9,9 @@ import argparse
 import subprocess
 import os
 import glob
-from keras.models import Sequential, Model
-from keras.layers import Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, Input, ZeroPadding3D
-import keras.metrics
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, Input, ZeroPadding3D
+import tensorflow.keras.metrics
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
 
@@ -225,13 +225,13 @@ def cnn(data, x_train, y_train, x_val, y_val, params):
 
     model = get_model(data, params)
 
-    # early_stopping_callback = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=10, patience=5,
+    # early_stopping_callback = tensorflow.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=10, patience=5,
     #                                                        restore_best_weights=True)
     # callbacks = [early_stopping_callback]
     callbacks = []
 
     optimizer = params.get('optimizer', 'adam')
-    model.compile(optimizer=optimizer, loss='mse', metrics=['mse', keras.metrics.mape, keras.metrics.mae])
+    model.compile(optimizer=optimizer, loss='mse', metrics=['mse', tensorflow.keras.metrics.mape, tensorflow.keras.metrics.mae])
     out = model.fit(x_train, y_train, epochs=params['epochs'], callbacks=callbacks, validation_data=(x_val, y_val))
 
     return out, model
