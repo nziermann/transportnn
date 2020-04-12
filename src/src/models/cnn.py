@@ -10,10 +10,256 @@ import subprocess
 import os
 import glob
 from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, Input, ZeroPadding3D
+from tensorflow.keras.layers import Layer, Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, Input, ZeroPadding3D
 import tensorflow.keras.metrics
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
+
+
+class LocalNetwork(Model):
+
+    def __init__(self, config, data):
+        super(LocalNetwork, self).__init__()
+        kernel_size = config.get('kernel_size', (5, 5, 5))
+        activation = config.get('activation', 'relu')
+
+        if config.get('land_removal_start', True):
+            self.land_removal_start = LandValueRemoval3D(data['land'])
+
+        padding_size = (kernel_size[0] // 2, kernel_size[1] // 2, kernel_size[2] // 2)
+
+        self.zero = ZeroPadding3D(padding_size)
+        self.local = LocallyConnected3D(1, kernel_size, activation=activation)
+
+        if config.get('land_removal', True):
+            self.land_removal = LandValueRemoval3D(data['land'])
+
+        if config.get('mass_normalization', True):
+            self.mass_normalization = MassConversation3D(data['volumes'])
+
+    def call(self, inputs):
+        x = inputs
+        if hasattr(self, 'land_removal_start'):
+            x = self.land_removal_start(x)
+
+        x = self.zero(x)
+        x = self.local(x)
+
+        if hasattr(self, 'land_removal'):
+            x = self.land_removal(x)
+
+        if hasattr(self, 'mass_normalization'):
+            x = self.mass_normalization([inputs, x])
+
+        return x
+
+
+class PaddedConv3D(Layer):
+    def __init__(self, filters, kernel_size, activation, batch_norm):
+        super(PaddedConv3D, self).__init__()
+        self.filters = filters
+        self.kernel_size = kernel_size
+        self.activation = activation
+        self.batch_norm = batch_norm
+
+        if batch_norm:
+            self.batch_norm_layer = BatchNormalization()
+
+        self.zero_padding = ZeroPadding3D((1, 0, 0))
+        self.wrap_around_padding = WrapAroundPadding3D((0, 1, 1))
+        self.conv = Conv3D(filters, kernel_size, activation=activation)
+
+    def call(self, inputs, training=None):
+        x = inputs
+
+        if hasattr(self, 'batch_norm_layer'):
+            x = self.batch_norm_layer(x, training=training)
+
+        x = self.zero_padding(x)
+        x = self.wrap_around_padding(x)
+        x = self.conv(x)
+
+        return x
+
+    def get_config(self):
+        return {
+            'filters': self.filters,
+            'kernel_size': self.kernel_size,
+            'activation': self.activation,
+            'batch_norm': self.batch_norm
+        }
+
+
+class SimpleConvolutionAutoencoder(Model):
+
+    def __init__(self, config, data):
+        super(SimpleConvolutionAutoencoder, self).__init__()
+        self.config = config
+        self.data = data
+
+        filter_exponent = config.get('filter_exponent', 4)
+        filters = int(2 ** filter_exponent)
+        kernel_size = config.get('kernel_size', (5, 5, 5))
+        activation = config.get('activation', 'relu')
+        activation_last = config.get('activation_last', activation)
+        batch_norm = config.get('batch_norm', False)
+        depth = config.get('depth', 6)
+
+        if config.get('land_removal_start', True):
+            self.land_removal_start = LandValueRemoval3D(data['land'])
+
+        self.sub_layers = []
+        for i in range(depth):
+            padded_conv = PaddedConv3D(filters, kernel_size, activation, batch_norm)
+            self.sub_layers.append(padded_conv)
+
+        self.padded_conv = PaddedConv3D(1, kernel_size, activation_last, batch_norm)
+
+        if config.get('land_removal', True):
+            self.land_removal = LandValueRemoval3D(data['land'])
+
+        if config.get('mass_normalization', True):
+            self.mass_conversation = MassConversation3D(data['volumes'])
+
+    def call(self, inputs, training=None, mask=None):
+        x = inputs
+
+        if self.land_removal_start:
+            x = self.land_removal_start(x)
+
+        for layer in self.sub_layers:
+            x = layer(x)
+
+        x = self.padded_conv(x, training=training)
+
+        if hasattr(self, 'land_removal'):
+            x = self.land_removal(x)
+
+        if hasattr(self, 'mass_conversation'):
+            x = self.mass_conversation([inputs, x])
+
+        return x
+
+    def get_config(self):
+        return {
+            'config': self.config,
+            'data': self.data
+        }
+
+
+class ConvolutionalAutoencoder(Model):
+
+    def __init__(self, config, data):
+        super(ConvolutionalAutoencoder, self).__init__()
+        self.config = config
+        self.data = data
+
+        filter_exponent = config.get('filter_exponent', 4)
+        filters = int(2 ** filter_exponent)
+        filters_2 = filters//2
+        kernel_size = config.get('kernel_size', (5, 5, 5))
+        activation = config.get('activation', 'relu')
+        activation_last = config.get('activation_last', activation)
+        batch_norm = config.get('batch_norm', False)
+        pooling_type = config.get('pooling_type', AveragePooling3D)
+
+        if config.get('land_removal_start', True):
+            self.land_removal_start = LandValueRemoval3D(data['land'])
+
+        if batch_norm:
+            self.batch_norm_1 = BatchNormalization()
+        self.conv_1 = Conv3D(filters, kernel_size, input_shape=input_shape, activation=activation, padding='same')
+        self.pooling_1 = pooling_type((1, 2, 2), padding='same')
+
+        if batch_norm:
+            self.batch_norm_2 = BatchNormalization()
+        self.conv_2 = Conv3D(filters_2, kernel_size, activation=activation, padding='same')
+        self.pooling_2 = pooling_type((1, 2, 2), padding='same')
+
+        if batch_norm:
+            self.batch_norm_3 = BatchNormalization()
+        self.conv_3 = Conv3D(filters_2, kernel_size, activation=activation, padding='same')
+        self.pooling_3 = pooling_type((3, 2, 2), padding='same')
+
+        # at this point the representation is (4, 4, 8) i.e. 128-dimensional
+        if batch_norm:
+            self.batch_norm_4 = BatchNormalization()
+        self.conv_4 = Conv3D(filters_2, kernel_size, activation=activation, padding='same')
+        self.up_4 = UpSampling3D((3, 2, 2))
+
+        if batch_norm:
+            self.batch_norm_5 = BatchNormalization()
+        self.conv_5 = Conv3D(filters_2, kernel_size, activation=activation, padding='same')
+        self.up_5 = UpSampling3D((1, 2, 2))
+
+        if batch_norm:
+            self.batch_norm_6 = BatchNormalization()
+        self.conv_6 = Conv3D(filters, kernel_size, activation=activation, padding='same')
+        self.up_6 = UpSampling3D((1, 2, 2))
+
+        # cnn = sub_model(input)
+        # output = Conv3D(1, kernel_size, activation=activation_last, padding='same')(cnn)
+        self.output_conv = Conv3D(1, kernel_size, activation=activation_last, padding='same')
+
+        if config.get('land_removal', True):
+            self.land_removal = LandValueRemoval3D(data['land'])
+
+        if config.get('mass_normalization', True):
+            self.mass_normalization = MassConversation3D(data['volumes'])
+
+    def call(self, inputs, training=None, mask=None):
+        x = inputs
+
+        if hasattr(self, 'land_removal_start'):
+            x = self.land_removal_start(x)
+
+        if hasattr(self, 'batch_norm_1'):
+            x = self.batch_norm_1(x, training=training)
+        x = self.conv_1(x)
+        x = self.pooling_1(x)
+
+        if hasattr(self, 'batch_norm_2'):
+            x = self.batch_norm_2(x, training=training)
+        x = self.conv_2(x)
+        x = self.pooling_2(x)
+
+        if hasattr(self, 'batch_norm_3'):
+            x = self.batch_norm_3(x, training=training)
+        x = self.conv_3(x)
+        x = self.pooling_3(x)
+
+        # at this point the representation is (4, 4, 8) i.e. 128-dimensional
+        if hasattr(self, 'batch_norm_4'):
+            x = self.batch_norm_4(x, training=training)
+        x = self.conv_4(x)
+        x = self.up_4(x)
+
+        if hasattr(self, 'batch_norm_5'):
+            x = self.batch_norm_5(x, training=training)
+        x = self.conv_5(x)
+        x = self.up_5(x)
+
+        if hasattr(self, 'batch_norm_6'):
+            x = self.batch_norm_6(x, training=training)
+        x = self.conv_6(x)
+        x = self.up_6(x)
+
+        x = self.output_conv(x)
+
+        if hasattr(self, 'land_removal'):
+            x = self.land_removal(x)
+
+        if hasattr(self, 'mass_normalization'):
+            x = self.mass_normalization(x)
+
+        return x
+
+    def get_config(self):
+        return {
+            'config': self.config,
+            'data': self.data
+        }
+
 
 def get_model(data, config):
     model_type = config.get('model_type', 'climatenn')
@@ -28,119 +274,13 @@ def get_model(data, config):
 
 
 def get_local_network(data, config):
-    filter_exponent = config.get('filter_exponent', 4)
-    filters = int(2 ** filter_exponent)
-    kernel_size = config.get('kernel_size', (5, 5, 5))
-    activation = config.get('activation', 'relu')
-    activation_last = config.get('activation_last', activation)
-    batch_norm = config.get('batch_norm', False)
-    depth = config.get('depth', 6)
-    input_shape = config.get('input_shape', (15, 64, 128, 1))
-
-    input_layer = Input(shape=input_shape)
-    start_layer = input_layer
-
-    if config.get('land_removal_start', True):
-        start_layer = LandValueRemoval3D(data['land'])(start_layer)
-
-    padding_size = (kernel_size[0] // 2, kernel_size[1] // 2, kernel_size[2] // 2)
-    print(f'Kernel size {kernel_size}')
-    print(f'Padding size: {padding_size}')
-
-    sub_model = Sequential()
-
-    zero = ZeroPadding3D(padding_size, input_shape=input_shape)
-    sub_model.add(zero)
-    local = LocallyConnected3D(1, kernel_size, activation=activation)
-    sub_model.add(local)
-    output = sub_model(start_layer)
-
-    if config.get('land_removal', True):
-        output = LandValueRemoval3D(data['land'])(output)
-
-    if config.get('mass_normalization', True):
-        output = MassConversation3D(data['volumes'])([start_layer, output])
-
-    model = Model(inputs=input_layer, outputs=output)
+    model = LocalNetwork(config, data)
 
     return model
 
 
 def get_simple_convolutional_autoencoder(data, config):
-    filter_exponent = config.get('filter_exponent', 4)
-    filters = int(2 ** filter_exponent)
-    kernel_size = config.get('kernel_size', (5, 5, 5))
-    activation = config.get('activation', 'relu')
-    activation_last = config.get('activation_last', activation)
-    batch_norm = config.get('batch_norm', False)
-    depth = config.get('depth', 6)
-    input_shape = config.get('input_shape', (15, 64, 128, 1))
-
-    inputs = Input(shape=input_shape)
-    x = inputs
-
-    if config.get('land_removal_start', True):
-        x = LandValueRemoval3D(data['land'])(x)
-
-    for i in range(depth):
-        if batch_norm:
-            x = BatchNormalization()(x)
-
-        #x = ZeroPadding3D((1, 1, 1))(x)
-        x = ZeroPadding3D((1, 0, 0))(x)
-        x = WrapAroundPadding3D((0, 1, 1))(x)
-        x = Conv3D(filters, kernel_size, activation=activation)(x)
-
-    #x = ZeroPadding3D((1, 1, 1))(x)
-    x = ZeroPadding3D((1, 0, 0))(x)
-    x = WrapAroundPadding3D((0, 1, 1))(x)
-    x = Conv3D(1, kernel_size, activation=activation_last)(x)
-
-    if config.get('land_removal', True):
-        x = LandValueRemoval3D(data['land'])(x)
-
-    if config.get('mass_normalization', True):
-        x = MassConversation3D(data['volumes'])([inputs, x])
-
-    model = Model(inputs=inputs, outputs=x)
-    model.summary()
-
-    return model
-
-
-def get_non_shared_convolutional_autoencoder(data, config):
-    filter_exponent = config.get('filter_exponent', 4)
-    filters = int(2 ** filter_exponent)
-    kernel_size = config.get('kernel_size', (5, 5, 5))
-    activation = config.get('activation', 'relu')
-    activation_last = config.get('activation_last', activation)
-    batch_norm = config.get('batch_norm', False)
-    depth = config.get('depth', 6)
-    input_shape = config.get('input_shape', (15, 64, 128, 1))
-
-    input_layer = Input(shape=input_shape)
-    start_layer = input_layer
-
-    if config.get('land_removal_start', True):
-        start_layer = LandValueRemoval3D(data['land'])(start_layer)
-
-    sub_model = Sequential()
-
-    for i in range(depth):
-        if batch_norm:
-            sub_model.add(BatchNormalization(input_shape=input_shape))
-        sub_model.add(Conv3D(filters, kernel_size, input_shape=input_shape, activation=activation, padding='same'))
-
-    sub_model.add(Conv3D(1, kernel_size, activation=activation_last, padding='same'))
-    output = sub_model(start_layer)
-
-    if config.get('land_removal', True):
-        output = LandValueRemoval3D(data['land'])(output)
-
-    if config.get('mass_normalization', True):
-        output = MassConversation3D(data['volumes'])([start_layer, output])
-
-    model = Model(inputs=input_layer, outputs=output)
+    model = SimpleConvolutionAutoencoder(config, data)
 
     return model
 
@@ -152,67 +292,10 @@ def get_non_shared_convolutional_autoencoder(data, config):
 # activation
 # activation_last
 def get_convolutional_autoencoder(data, config):
-    filter_exponent = config.get('filter_exponent', 4)
-    filters = int(2**filter_exponent)
-    filters_2 = int(filters/2)
-    kernel_size = config.get('kernel_size', (5, 5, 5))
-    pooling_type = config.get('pooling_type', AveragePooling3D)
-    activation = config.get('activation', 'relu')
-    activation_last = config.get('activation_last', activation)
-    batch_norm = config.get('batch_norm', False)
-    input_shape = config.get('input_shape', (15, 64, 128, 1))
-
-    input_layer = Input(shape=input_shape)
-    start_layer = input_layer
-
-    if config.get('land_removal_start', True):
-        start_layer = LandValueRemoval3D(data['land'])(start_layer)
-
-    sub_model = Sequential()
-    if batch_norm:
-        sub_model.add(BatchNormalization(input_shape=input_shape))
-    sub_model.add(Conv3D(filters, kernel_size, input_shape=input_shape, activation=activation, padding='same'))
-    sub_model.add(pooling_type((1, 2, 2), padding='same'))
-    if batch_norm:
-        sub_model.add(BatchNormalization())
-    sub_model.add(Conv3D(filters_2, kernel_size, activation=activation, padding='same'))
-    sub_model.add(pooling_type((1, 2, 2), padding='same'))
-    if batch_norm:
-        sub_model.add(BatchNormalization())
-    sub_model.add(Conv3D(filters_2, kernel_size, activation=activation, padding='same'))
-    sub_model.add(pooling_type((3, 2, 2), padding='same'))
-
-    # at this point the representation is (4, 4, 8) i.e. 128-dimensional
-    if batch_norm:
-        sub_model.add(BatchNormalization())
-    sub_model.add(Conv3D(filters_2, kernel_size, activation=activation, padding='same'))
-    sub_model.add(UpSampling3D((3, 2, 2)))
-    if batch_norm:
-        sub_model.add(BatchNormalization())
-    sub_model.add(Conv3D(filters_2, kernel_size, activation=activation, padding='same'))
-    sub_model.add(UpSampling3D((1, 2, 2)))
-    if batch_norm:
-        sub_model.add(BatchNormalization())
-    sub_model.add(Conv3D(filters, kernel_size, activation=activation, padding='same'))
-    sub_model.add(UpSampling3D((1, 2, 2)))
-    if batch_norm:
-        sub_model.add(BatchNormalization())
-
-    # cnn = sub_model(input)
-    # output = Conv3D(1, kernel_size, activation=activation_last, padding='same')(cnn)
-    sub_model.add(Conv3D(1, kernel_size, activation=activation_last, padding='same'))
-    output = sub_model(start_layer)
-
-    if config.get('land_removal', True):
-        output = LandValueRemoval3D(data['land'])(output)
-
-
-    if config.get('mass_normalization', True):
-        output = MassConversation3D(data['volumes'])([start_layer, output])
-
-    model = Model(inputs=input_layer, outputs=output)
+    model = SimpleConvolutionAutoencoder(config, data)
 
     return model
+
 
 def cnn(data, x_train, y_train, x_val, y_val, params):
     print("Getting model with:")
@@ -378,7 +461,7 @@ def train_models(config, parameters):
     if validation_data is not None:
         predict_validations(best_model, validation_data, config)
 
-    best_model.save(f'{config["job_dir"]}/best_model.h5')
+    best_model.save(f'{config["job_dir"]}/best_model', save_format='tf')
     save_data_for_visualization(best_model, config['data_dir'], config['samples'], config['grid_file'], config['job_dir'])
 
 
@@ -435,11 +518,11 @@ def main():
         'kernel_size': [(3, 3, 3)],
         'activation': ['elu'],
         # 'epochs': [100],
-        'epochs': [1],
+        'epochs': [5],
         'batch_norm': [False],
         'optimizer': ['adam'],
         # 'mass_normalization': [True, False],
-        'mass_normalization': [False],
+        'mass_normalization': [True],
         'land_removal': [True],
         'land_removal_start': [True],
         # 'model_type': ['local']
@@ -452,6 +535,7 @@ def main():
         'volumes_file': '/storage/other/normalizedVolumes.nc',
         'grid_file': '/storage/other/mitgcm-128x64-grid-file.nc',
         'job_dir': "/artifacts",
+        #'samples': np.inf
         'samples': 220
     }
 
