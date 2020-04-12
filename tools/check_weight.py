@@ -1,4 +1,3 @@
-import netCDF4 as nc4
 import numpy as np
 import argparse
 
@@ -17,12 +16,13 @@ def get_mass(data, normalized_volume_file):
 
     return np.sum(normalized_volumes * data)
 
-normalized_volume_file = "/Users/nilsziermann/.metos3d/data/data/TMM/2.8/Geometry/normalizedVolumes.petsc"
+
 parser = argparse.ArgumentParser(description='Check mass of data')
-parser.add_argument('data_file', type=str, help='Path to petsc file')
+parser.add_argument('--data-file', type=str, help='Path to petsc file')
+parser.add_argument('--volume-file', type=str, help='Path to volume file')
 args = parser.parse_args()
 
 data = read_PETSC_file(args.data_file)
 
 print(data)
-print(get_mass(data, normalized_volume_file))
+print(get_mass(data, args.volume_file))
