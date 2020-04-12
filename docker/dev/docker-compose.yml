@@ -10,4 +10,5 @@ services:
         volumes:
             - ${BASE}/data:/storage
             - ${BASE}/src:/application
+            - ${BASE}/tools:/tools
             - ${BASE}/data/artifacts:/artifacts
