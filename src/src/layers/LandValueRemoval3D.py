@@ -15,14 +15,11 @@ class LandValueRemoval3D(Layer):
         super(LandValueRemoval3D, self).build(input_shape)  # Be sure to call this at the end
 
     def call(self, input, **kwargs):
-        print(f'Input shape: {input.shape}')
         # Together with the broadcasting of the vector this produces a matrix with
         # _,x,y,z,_ = land_data[x,y,z]
         # Multiplication with this matrix scales the output for each sample so that the proportions are kept
         # and the output mass is the same as the input mass for each sample in the batch
         land_removal_output = input * self.land_kernel
-        print(f'Land kernel shape: {self.land_kernel.shape}')
-        print(f'Output shape: {land_removal_output.shape}')
 
         return land_removal_output
 

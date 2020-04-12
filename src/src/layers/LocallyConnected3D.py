@@ -197,16 +197,9 @@ class LocallyConnected3D(Layer):
         stacks = conv_utils.conv_output_length(stacks, self.kernel_size[2],
                                              self.padding, self.strides[2])
 
-        print(stacks)
-        print(input_shape)
-
         if self.data_format == 'channels_first':
-            print("Called")
-            print((input_shape[0], self.filters, rows, cols, stacks))
             return (input_shape[0], self.filters, rows, cols, stacks)
         elif self.data_format == 'channels_last':
-            print("Called")
-            print((input_shape[0], rows, cols, stacks, self.filters))
             return (input_shape[0], rows, cols, stacks, self.filters)
 
     def call(self, inputs, **kwargs):
@@ -306,11 +299,8 @@ class LocallyConnected3D(Layer):
         output = tfK.reshape(output,
                          (output_row, output_col, output_stack, -1, filters))
 
-        print("Exiting")
-
         if data_format == 'channels_first':
             output = tfK.permute_dimensions(output, (3, 4, 0, 1, 2))
         else:
             output = tfK.permute_dimensions(output, (3, 0, 1, 2, 4))
-        print(f'Locally connected output shape: {tfK.shape(output)}')
         return output
