@@ -24,4 +24,4 @@ RUN echo '[GoogleCompute]\nservice_account = default' > /etc/boto.cfg
 
 RUN mkdir -p /tmp/artifacts
 
-ENTRYPOINT ["/root/miniconda/bin/python3", "src/models/cnn.py"]
+ENTRYPOINT ["/root/miniconda/bin/python3", "src/models/main.py"]
