@@ -355,7 +355,6 @@ def train_split_model(config, parameters):
     parameters['land_removal_start'] = [False]
     parameters['input_shape'] = [(15, 32, 64, 1)]
 
-
     # Temporarily use models without overlap for data
     def split(data, overlap=False):
         split_data_array = split_data(data, 2, 2, overlap=overlap)
@@ -530,6 +529,7 @@ def product_dict(**kwargs):
     for instance in itertools.product(*vals):
         yield dict(zip(keys, instance))
 
+
 def get_dummy_data():
     volumes = np.zeros((1, 15, 64, 128, 1))
     land = np.zeros((1, 15, 64, 128, 1))
@@ -602,7 +602,7 @@ def main():
     }
 
     if args.download_from is not None:
-        subprocess.check_call(['gsutil', '-m' , 'cp', '-r', args.download_from, '/tmp'])
+        subprocess.check_call(['gsutil', '-m', 'cp', '-r', args.download_from, '/tmp'])
 
     print(config)
     print(os.environ.get('HDF5_USE_FILE_LOCKING'))
@@ -628,7 +628,7 @@ def main():
         for f in files:
             print(f)
 
-        subprocess.check_call(['gsutil', '-m' , 'cp', '-r', config['job_dir'], args.upload_to])
+        subprocess.check_call(['gsutil', '-m', 'cp', '-r', config['job_dir'], args.upload_to])
 
 
 if __name__ == "__main__":
