@@ -181,6 +181,15 @@ class SimpleConvolutionAutoencoder(Model):
         }
 
 
+class NoneModel(Model):
+
+    def __init__(self):
+        super(NoneModel, self).__init__()
+
+    def call(self, inputs, training=None, mask=None):
+        return inputs
+
+
 class ConvolutionalAutoencoder(Model):
 
     def __init__(self, config, data):
@@ -301,10 +310,19 @@ def get_model(data, config):
     if model_type == 'simple':
         return get_simple_convolutional_autoencoder(data, config)
 
+    if model_type == 'none':
+        return get_none_model(data, config)
+
     if model_type == 'local':
         return get_local_network(data, config)
 
     return get_convolutional_autoencoder(data, config)
+
+
+def get_none_model(data, config):
+    model = NoneModel()
+
+    return model
 
 
 def get_local_network(data, config):
