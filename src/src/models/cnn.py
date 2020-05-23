@@ -575,29 +575,28 @@ def main():
     config.gpu_options.allow_growth = True
     session = InteractiveSession(config=config)
 
-    p = {
-        'filter_exponent': [4],
-        'kernel_size': [(3, 3, 3)],
-        'activation': ['elu'],
-        # 'epochs': [100],
+    parameters = {
+        'filter_exponent': [2, 4, 6],
+        'depth': [2, 4, 6],
+        'kernel_size': [3],
+        'activation': ['relu'],
+        #'epochs': [100],
         'epochs': [5],
         'batch_norm': [False],
         'optimizer': ['adam'],
-        # 'mass_normalization': [True, False],
-        'mass_normalization': [True],
-        'land_removal': [True],
-        'land_removal_start': [True],
-        # 'model_type': ['local']
-        'model_type': ['simple']
-        # 'model_type': ['simple', 'climatenn']
+        'mass_normalization': [True, False],
+        'land_removal': [True, False],
+        'land_removal_start': [True, False],
+        'model_type': ['simple', 'climatenn']
     }
 
     defaults = {
-        'data_dir': "/storage/data/smooth",
+        'data_dir': "/storage/data/3d/smooth",
+        'validation_data': "/storage/data/3d/validation",
         'volumes_file': '/storage/other/normalizedVolumes.nc',
         'grid_file': '/storage/other/mitgcm-128x64-grid-file.nc',
         'job_dir': "/artifacts",
-        #'samples': np.inf
+        # 'samples': np.inf
         'samples': 220
     }
 
@@ -616,7 +615,6 @@ def main():
     parser.add_argument("--upload-to", help="", default=None)
     args = parser.parse_args()
 
-    parameters = p
     if not args.parameters_file is None:
         with open(args.parameters_file, "r") as parameters_file:
             parameters = json.load(parameters_file)
