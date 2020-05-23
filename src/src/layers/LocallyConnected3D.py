@@ -13,6 +13,7 @@ from tensorflow.python.keras.engine.base_layer import Layer
 from tensorflow.python.keras.engine.input_spec import InputSpec
 from tensorflow.python.keras.utils import conv_utils
 from tensorflow.python.keras.utils import tf_utils
+from tensorflow.python.keras import backend as K
 
 
 class LocallyConnected3D(Layer):
@@ -120,7 +121,7 @@ class LocallyConnected3D(Layer):
         if self.padding != 'valid':
             raise ValueError('Invalid border mode for LocallyConnected3D '
                              '(only "valid" is supported): ' + padding)
-        self.data_format = K.normalize_data_format(data_format)
+        self.data_format = conv_utils.normalize_data_format(data_format)
         self.activation = activations.get(activation)
         self.use_bias = use_bias
         self.kernel_initializer = initializers.get(kernel_initializer)
@@ -203,12 +204,9 @@ class LocallyConnected3D(Layer):
             return (input_shape[0], rows, cols, stacks, self.filters)
 
     def call(self, inputs, **kwargs):
-        output = self.local_conv3d(inputs,
-                                   self.kernel,
-                                   self.kernel_size,
-                                   self.strides,
-                                   (self.output_row, self.output_col, self.output_stack),
-                                   self.data_format)
+        output = K.local_conv(inputs, self.kernel, self.kernel_size, self.strides,
+                              (self.output_row, self.output_col, self.output_stack),
+                              self.data_format)
 
         if self.use_bias:
             output = K.bias_add(output, self.bias, data_format=self.data_format)
@@ -236,71 +234,3 @@ class LocallyConnected3D(Layer):
         }
         base_config = super(LocallyConnected3D, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
-
-    @staticmethod
-    def local_conv3d(inputs, kernel, kernel_size, strides, output_shape, data_format=None):
-        """Apply 2D conv with un-shared weights.
-
-        # Arguments
-            inputs: 4D tensor with shape:
-                    (batch_size, filters, new_rows, new_cols)
-                    if data_format='channels_first'
-                    or 4D tensor with shape:
-                    (batch_size, new_rows, new_cols, filters)
-                    if data_format='channels_last'.
-            kernel: the unshared weight for convolution,
-                    with shape (output_items, feature_dim, filters)
-            kernel_size: a tuple of 2 integers, specifying the
-                         width and height of the 2D convolution window.
-            strides: a tuple of 2 integers, specifying the strides
-                     of the convolution along the width and height.
-            output_shape: a tuple with (output_row, output_col)
-            data_format: the data format, channels_first or channels_last
-
-        # Returns
-            A 4d tensor with shape:
-            (batch_size, filters, new_rows, new_cols)
-            if data_format='channels_first'
-            or 4D tensor with shape:
-            (batch_size, new_rows, new_cols, filters)
-            if data_format='channels_last'.
-
-        # Raises
-            ValueError: if `data_format` is neither
-                        `channels_last` or `channels_first`.
-        """
-        data_format = tfK.normalize_data_format(data_format)
-
-        stride_row, stride_col, stride_stack = strides
-        output_row, output_col, output_stack = output_shape
-        kernel_shape = tfK.int_shape(kernel)
-        _, feature_dim, filters = kernel_shape
-
-        xs = []
-
-        for i in range(output_row):
-            for j in range(output_col):
-                for k in range(output_stack):
-                    slice_row = tfK.py_slice(i * stride_row,
-                                         i * stride_row + kernel_size[0])
-                    slice_col = tfK.py_slice(j * stride_col,
-                                         j * stride_col + kernel_size[1])
-                    slice_stack = tfK.py_slice(k * stride_stack,
-                                           k * stride_stack + kernel_size[2])
-                    if data_format == 'channels_first':
-                        xs.append(tfK.reshape(inputs[:, :, slice_row, slice_col, slice_stack],
-                                          (1, -1, feature_dim)))
-                    else:
-                        xs.append(tfK.reshape(inputs[:, slice_row, slice_col, slice_stack, :],
-                                          (1, -1, feature_dim)))
-
-        x_aggregate = tfK.concatenate(xs, axis=0)
-        output = tfK.batch_dot(x_aggregate, kernel)
-        output = tfK.reshape(output,
-                         (output_row, output_col, output_stack, -1, filters))
-
-        if data_format == 'channels_first':
-            output = tfK.permute_dimensions(output, (3, 4, 0, 1, 2))
-        else:
-            output = tfK.permute_dimensions(output, (3, 0, 1, 2, 4))
-        return output
