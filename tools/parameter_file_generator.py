@@ -1,5 +1,10 @@
 import json
+import itertools
+import subprocess
+import shutil
 import argparse
+import os
+import hashlib
 
 #Rough plan
 # 1. Load parameter file
@@ -14,3 +19,50 @@ import argparse
 # 1. We get a model file for every model
 # 2. We get the model and validation behaviour for every model
 # 3. It should be easier to handle and seperate the logs
+
+def load_parameters(file_path):
+    with open(file_path, "r") as parameters_file:
+        parameters = json.load(parameters_file)
+
+    return parameters
+
+def write_parameters_to_path(parameters, file_path):
+    with open(file_path, "w") as parameters_file:
+        parameters_file.write(json.dumps(parameters))
+
+def get_parameter_combinations(parameter_definitions):
+    keys = parameter_definitions.keys()
+    values = parameter_definitions.values()
+    for instance in itertools.product(*values):
+        yield dict(zip(keys, instance))
+
+def train_for_parameter_file(parameter_file):
+    docker_container = 'nziermann/transportnn/cnn-training'
+    subprocess.check_call(['docker', 'run', docker_container, '--parameters-file', parameter_file])
+
+def copy_data(src, dst):
+    shutil.copytree(src, dst)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-parameter-combinations-file', help='Location of file for parameter combinations')
+    parser.add_argument('-src-data-dir')
+    parser.add_argument('-dst-data-dir')
+
+    args = parser.parse_args()
+
+    parameter_data = load_parameters(args.parameter_combinations_file)
+    parameter_combinations = get_parameter_combinations(parameter_data)
+
+    parameter_dst_path = os.path.join(args.src_data_dir, 'parameters.json')
+    for parameter_combination in parameter_combinations:
+        parameter_hash = hashlib.sha1(json.dumps(parameter_combination).encode('utf-8')).hexdigest()
+        parameter_dst_data_dir = os.path.join(args.dst_data_dir, parameter_hash)
+
+        write_parameters_to_path(parameter_combination, parameter_dst_path)
+        train_for_parameter_file(parameter_dst_path)
+        copy_data(args.src_data_dir, parameter_dst_data_dir)
+
+
+if __name__ == "__main__":
+    main()
