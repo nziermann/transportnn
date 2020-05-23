@@ -4,7 +4,7 @@ services:
         runtime: nvidia
         command: tail -f /dev/null
         build:
-            context: .
+            context: ${BASE}
             dockerfile: ./docker/cnn-training/Dockerfile
             target: dev
         volumes:
@@ -12,3 +12,4 @@ services:
             - ${BASE}/src:/application
             - ${BASE}/tools:/tools
             - ${BASE}/data/artifacts:/artifacts
+            - ${BASE}/data/logs:/logs
