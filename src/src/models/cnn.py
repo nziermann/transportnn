@@ -73,19 +73,25 @@ class LocalNetwork(Model):
 
 
 class PaddedConv3D(Layer):
-    def __init__(self, filters, kernel_size, activation, batch_norm):
+    def __init__(self, filters, kernel_size, activation, batch_norm, residual):
         super(PaddedConv3D, self).__init__()
         self.filters = filters
         self.kernel_size = kernel_size
         self.activation = activation
         self.batch_norm = batch_norm
+        self.residual = residual
 
         if batch_norm:
             self.batch_norm_layer = BatchNormalization()
 
         self.zero_padding = ZeroPadding3D((1, 0, 0))
         self.wrap_around_padding = WrapAroundPadding3D((0, 1, 1))
-        self.conv = Conv3D(filters, kernel_size, activation=activation)
+        self.conv = Conv3D(filters, kernel_size, activation=None)
+
+        if residual:
+            self.add = Add()
+
+        self.activation = Activation(activation)
 
     def call(self, inputs, training=None):
         x = inputs
@@ -97,6 +103,11 @@ class PaddedConv3D(Layer):
         x = self.wrap_around_padding(x)
         x = self.conv(x)
 
+        if hasattr(self, 'add'):
+            x = self.add([x, inputs])
+
+        x = self.activation(x)
+
         return x
 
     def get_config(self):
@@ -104,7 +115,8 @@ class PaddedConv3D(Layer):
             'filters': self.filters,
             'kernel_size': self.kernel_size,
             'activation': self.activation,
-            'batch_norm': self.batch_norm
+            'batch_norm': self.batch_norm,
+            'residual': self.residual
         }
 
 
@@ -128,10 +140,12 @@ class SimpleConvolutionAutoencoder(Model):
 
         self.sub_layers = []
         for i in range(depth):
-            padded_conv = PaddedConv3D(filters, kernel_size, activation, batch_norm)
+            padded_conv = PaddedConv3D(filters, kernel_size, activation, batch_norm, False)
             self.sub_layers.append(padded_conv)
 
-        self.padded_conv = PaddedConv3D(1, kernel_size, activation_last, batch_norm)
+        self.padded_conv = PaddedConv3D(1, kernel_size, activation_last, batch_norm, False)
+
+        self.add = Add()
 
         if config.get('land_removal', True):
             self.land_removal = LandValueRemoval3D(data['land'])
@@ -149,6 +163,8 @@ class SimpleConvolutionAutoencoder(Model):
             x = layer(x)
 
         x = self.padded_conv(x, training=training)
+
+        x = self.add([inputs, x])
 
         if hasattr(self, 'land_removal'):
             x = self.land_removal(x)
