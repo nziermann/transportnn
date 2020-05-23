@@ -1,12 +1,7 @@
 from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Conv1D, AveragePooling1D, UpSampling1D, BatchNormalization, Input, Dense, Flatten, ZeroPadding1D
+from tensorflow.keras.layers import Conv1D, AveragePooling1D, UpSampling1D, BatchNormalization, Input, ZeroPadding1D
 import tensorflow.keras.metrics
-import numpy as np
-from src.data import get_training_data_1d, get_volumes_1d
-from src.visualization import save_data_for_visualization_1d
 from src.layers import MassConversation1D
-from src.models.cnn import product_dict
-from functools import partial
 
 from tensorflow.python.client import device_lib
 
@@ -224,7 +219,7 @@ def get_convolutional_autoencoder_climatenn(data, config):
     return model
 
 
-def cnn(data, x_train, y_train, x_val, y_val, params):
+def cnn_1d(data, x_train, y_train, x_val, y_val, params):
     print("Getting model with:")
     print(params)
 
@@ -248,53 +243,3 @@ def cnn(data, x_train, y_train, x_val, y_val, params):
     out = model.fit(x_train, y_train, epochs=params['epochs'], callbacks=callbacks, validation_data=(x_val, y_val))
 
     return out, model
-
-p = {
-    'filter_exponent': [2, 4, 6],
-    'kernel_size': [3, 5, 7],
-    'activation': ['elu', 'relu'],
-    #'epochs': [100],
-    'epochs': [5],
-    'batch_norm': [True, False],
-    'optimizer': ['adam'],
-    #'normalize_input_data': [False],
-    #'normalize_mean_input_data': [True],
-    'model': ['climatenn', 'tamila', 'tamila_deep'],
-    'mass_normalization': [True, False]
-}
-
-data_dir = "/storage/data/1d/smooth"
-validation_dir = "/storage/data/1d/validation"
-volumes_file = "/storage/other/normalizedVolumes.petsc"
-samples = np.inf
-
-print("Loading data")
-x_train, y_train = get_training_data_1d(data_dir, samples)
-print("Loaded data")
-
-print("Loading validation data")
-x_val, y_val = get_training_data_1d(validation_dir, np.inf)
-printf("Loaded validation data")
-
-print("Loading volumes")
-data = np.reshape(get_volumes_1d(volumes_file), (1, 52749, 1))
-print("Loaded volumes")
-
-cnn_partial = partial(cnn, data)
-
-print("Standalone starting")
-x_val = np.full((0, 52749, 1), np.nan)
-y_val = np.full((0, 52749, 1), np.nan)
-
-parameter_combinations = product_dict(**p)
-best_model = None
-lowest_loss = np.inf
-for parameter_combination in parameter_combinations:
-    model, out = cnn_partial(x_train, y_train, x_val, y_val, parameter_combination)
-    model_loss = out.history['loss'][-1]
-
-    if model_loss < lowest_loss:
-        best_model, lowest_loss = model, model_loss
-
-# Save data for later visualization
-save_data_for_visualization_1d(best_model, data_dir, samples)
