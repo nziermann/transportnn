@@ -365,8 +365,20 @@ def cnn(data, x_train, y_train, x_val, y_val, params):
     # callbacks = [early_stopping_callback]
     callbacks = []
 
+    # Define the Keras TensorBoard callback.
+    logdir = f'/logs/fit/{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}'
+    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
+    callbacks.append(tensorboard_callback)
+
+    hparams_callback = hp.KerasCallback(logdir, params)
+    callbacks.append(hparams_callback)
+
+    early_stopping_callback = keras.callbacks.EarlyStopping()
+    callbacks.append(early_stopping_callback)
+
     optimizer = params.get('optimizer', 'adam')
-    model.compile(optimizer=optimizer, loss='mse', metrics=['mse', tensorflow.keras.metrics.mape, tensorflow.keras.metrics.mae])
+    model.compile(optimizer=optimizer, loss='mse',
+                  metrics=[tensorflow.keras.metrics.mse, tensorflow.keras.metrics.mape, tensorflow.keras.metrics.mae])
     out = model.fit(x_train, y_train, epochs=params['epochs'], callbacks=callbacks, validation_data=(x_val, y_val))
 
     return out, model
