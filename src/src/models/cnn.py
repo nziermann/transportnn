@@ -18,7 +18,7 @@ from tensorflow.compat.v1 import InteractiveSession
 
 class LocalNetwork(Model):
 
-    def __init__(self, config, data):
+    def __init__(self, config, data, reduce_resolution=True):
         super(LocalNetwork, self).__init__()
         kernel_size = config.get('kernel_size', (5, 5, 5))
         activation = config.get('activation', 'relu')
@@ -27,9 +27,21 @@ class LocalNetwork(Model):
             self.land_removal_start = LandValueRemoval3D(data['land'])
 
         padding_size = (kernel_size[0] // 2, kernel_size[1] // 2, kernel_size[2] // 2)
+        stride_size = (1, 1, 1)
+
+        if reduce_resolution:
+            # Special handling for (3, 3, 3) kernel size
+            padding_size = (0, 1, 2)
+
+        if reduce_resolution:
+            stride_size = kernel_size
 
         self.zero = ZeroPadding3D(padding_size)
-        self.local = LocallyConnected3D(1, kernel_size, activation=activation)
+        self.local = LocallyConnected3D(1, kernel_size, activation=activation, strides=stride_size)
+
+        if reduce_resolution:
+            self.upsampling = UpSampling3D(stride_size)
+            self.cropping = Cropping3D(padding_size)
 
         if config.get('land_removal', True):
             self.land_removal = LandValueRemoval3D(data['land'])
@@ -44,6 +56,12 @@ class LocalNetwork(Model):
 
         x = self.zero(x)
         x = self.local(x)
+
+        if hasattr(self, 'upsampling'):
+            x = self.upsampling(x)
+
+        if hasattr(self, 'cropping'):
+            x = self.cropping(x)
 
         if hasattr(self, 'land_removal'):
             x = self.land_removal(x)
