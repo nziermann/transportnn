@@ -39,7 +39,7 @@ def main():
     }
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--parameters_file", help="")
+    parser.add_argument("--parameters-file", help="")
     parser.add_argument("--data-dir", help="", default=defaults['data_dir'])
     parser.add_argument("--validation-data", default=defaults['validation_data'])
     parser.add_argument("--predict-data", default=None)
