@@ -383,24 +383,29 @@ def train_split_model(config, parameters):
         return multi_split_data
 
     print("Loading data")
-    x, y = get_training_data(config['data_dir'], config['samples'])
-    assert not np.any(np.isnan(x)), "X contains nan data"
-    assert not np.any(np.isnan(y)), "Y contains nan data"
+    x_train, y_train = get_training_data(config['data_dir'], config['samples'])
+    assert not np.any(np.isnan(x)), "x_train contains nan data"
+    assert not np.any(np.isnan(y)), "y_train contains nan data"
+    x_val, y_val = get_training_data(config['validation_data'], config['samples'])
+    assert not np.any(np.isnan(x)), "x_val contains nan data"
+    assert not np.any(np.isnan(y)), "y_val contains nan data"
     print("Loaded data")
 
-    x_split = split(x)
-    y_split = split(y)
+    x_train_split = split(x_train)
+    y_train_split = split(y_train)
+    x_val_split = split(x_val)
+    y_val_split = split(y_val)
 
-    validation_data = None
-    if config['validation_data'] is not None:
+    predict_data = None
+    if config['predict_data'] is not None:
         print("Loading validation data")
-        validation_data = load_netcdf_data(config['validation_data'])
-        validation_data = np.reshape(validation_data, (-1, 15, 64, 128, 1))
-        assert not np.any(np.isnan(validation_data)), "Validation data contains nan data"
+        predict_data = load_netcdf_data(config['predict_data'])
+        predict_data = np.reshape(predict_data, (-1, 15, 64, 128, 1))
+        assert not np.any(np.isnan(predict_data)), "Validation data contains nan data"
         print("Loaded validation data")
-        validation_split = split(validation_data, False)
+        predict_split = split(predict_data, False)
 
-    #Temporarily disable special handling of land and mass
+    # Temporarily disable special handling of land and mass
     data = {
     }
 
@@ -414,8 +419,8 @@ def train_split_model(config, parameters):
     for parameter_combination in parameter_combinations:
         models = []
         sum_loss = 0
-        for i in range(len(x_split)):
-            out, model = cnn_partial(x_split[i], y_split[i], x_split[i], y_split[i], parameter_combination)
+        for i in range(len(x_train_split)):
+            out, model = cnn_partial(x_train_split[i], y_train_split[i], x_val_split[i], y_val_split[i], parameter_combination)
             models.append(model)
             sum_loss = sum_loss + out.history['loss'][-1]
 
@@ -428,12 +433,13 @@ def train_split_model(config, parameters):
     if best_models is None:
         best_models = first_models
 
-    if validation_data is not None:
-        predict_validations_split(best_models, validation_data, validation_split, config)
+    if predict_data is not None:
+        predict_validations_split(best_models, predict_data, predict_split, config)
 
     for i in range(len(best_models)):
         model = best_models[i]
         model.save(f'{config["job_dir"]}/best_model_{i}.h5')
+
 
 def predict_validations_split(models, validation_data, validation_data_split, config):
     starts = map(lambda validation_element: validation_element[0], validation_data_split)
@@ -455,19 +461,24 @@ def predict_validations_split(models, validation_data, validation_data_split, co
     save_as_netcdf(config['grid_file'], f'{config["job_dir"]}/model_predictions_validation.nc',
                    predictions, validation_data[1:])
 
+
 def train_models(config, parameters):
     print("Loading data")
-    x, y = get_training_data(config['data_dir'], config['samples'])
-    assert not np.any(np.isnan(x)), "X contains nan data"
-    assert not np.any(np.isnan(y)), "Y contains nan data"
+    x_train, y_train = get_training_data(config['data_dir'], config['samples'])
+    assert not np.any(np.isnan(x_train)), "x_train contains nan data"
+    assert not np.any(np.isnan(y_train)), "y_train contains nan data"
+    x_val, y_val = get_training_data(config['validation_data'], np.inf)
+    assert not np.any(np.isnan(x_val)), "x_val contains nan data"
+    assert not np.any(np.isnan(y_val)), "y_val contains nan data"
+
     print("Loaded data")
 
-    validation_data = None
-    if config['validation_data'] is not None:
+    predict_data = None
+    if config['predict_data'] is not None:
         print("Loading validation data")
-        validation_data = load_netcdf_data(config['validation_data'])
-        validation_data = np.reshape(validation_data, (-1, 15, 64, 128, 1))
-        assert not np.any(np.isnan(validation_data)), "Validation data contains nan data"
+        predict_data = load_netcdf_data(config['predict_data'])
+        predict_data = np.reshape(predict_data, (-1, 15, 64, 128, 1))
+        assert not np.any(np.isnan(predict_data)), "Validation data contains nan data"
         print("Loaded validation data")
 
     print("Loading volumes")
@@ -493,8 +504,6 @@ def train_models(config, parameters):
     first_model = None
     lowest_loss = np.inf
     for parameter_combination in parameter_combinations:
-        x_train, y_train = x, y
-        x_val, y_val = x, y
         out, model = cnn_partial(x_train, y_train, x_val, y_val, parameter_combination)
 
         if first_model is None:
@@ -509,21 +518,22 @@ def train_models(config, parameters):
     if best_model is None:
         best_model = first_model
 
-    if validation_data is not None:
-        predict_validations(best_model, validation_data, config)
+    if predict_data is not None:
+        predict_validations(best_model, predict_data, config)
 
     best_model.save(f'{config["job_dir"]}/best_model', save_format='tf')
-    save_data_for_visualization(best_model, config['data_dir'], config['samples'], config['grid_file'], config['job_dir'])
+    save_data_for_visualization(best_model, config['data_dir'], config['samples'], config['grid_file'],
+                                config['job_dir'])
 
 
 def predict_validations(model, validation_data, config):
     start = validation_data[0]
     start = start[np.newaxis]
     samples = np.size(validation_data, 0)
-    predictions = np.full((samples-1, 15, 64, 128, 1), np.nan)
+    predictions = np.full((samples - 1, 15, 64, 128, 1), np.nan)
     for i, y in enumerate(validation_data[1:], start=1):
         start = model.predict(start)
-        predictions[i-1] = start
+        predictions[i - 1] = start
 
     assert not np.any(np.isnan(predictions)), "Predictions contains nan data"
 
@@ -594,13 +604,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--parameters_file", help="")
     parser.add_argument("--data-dir", help="", default=defaults['data_dir'])
+    parser.add_argument("--validation-data", default=defaults['validation_data'])
+    parser.add_argument("--predict-data", default=None)
     parser.add_argument("--job-dir", help="", default=defaults['job_dir'])
     parser.add_argument("--volumes-file", help="", default=defaults['volumes_file'])
     parser.add_argument("--grid-file", help="", default=defaults['grid_file'])
     parser.add_argument("--samples", help="", default=defaults['samples'])
     parser.add_argument("--split", help="", action="store_true", default=False)
     parser.add_argument("--print-summaries", help="", action="store_true", default=False)
-    parser.add_argument("--validation-data", default=None)
     parser.add_argument("--download-from", help="", default=None)
     parser.add_argument("--upload-to", help="", default=None)
     args = parser.parse_args()
@@ -616,7 +627,8 @@ def main():
         'volumes_file': args.volumes_file,
         'grid_file': args.grid_file,
         'samples': args.samples,
-        'validation_data': args.validation_data
+        'validation_data': args.validation_data,
+        'predict_data': args.predict_data
     }
 
     if args.download_from is not None:
