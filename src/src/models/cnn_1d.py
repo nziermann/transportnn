@@ -250,30 +250,19 @@ def cnn(data, x_train, y_train, x_val, y_val, params):
     return out, model
 
 p = {
-    'filter_exponent': [4],
-    'kernel_size': [5],
-    'activation': ['elu'],
-    'epochs': [100],
-    'batch_norm': [False],
+    'filter_exponent': [2, 4, 6],
+    'kernel_size': [3, 5, 7],
+    'activation': ['elu', 'relu'],
+    #'epochs': [100],
+    'epochs': [5],
+    'batch_norm': [True, False],
     'optimizer': ['adam'],
-    'normalize_input_data': [False],
-    'normalize_mean_input_data': [True],
+    #'normalize_input_data': [False],
+    #'normalize_mean_input_data': [True],
     'model': ['climatenn', 'tamila', 'tamila_deep'],
     'mass_normalization': [True, False]
 }
 
-single_params = {
-    'filter_exponent': 4,
-    'kernel_size': 5,
-    'activation': 'elu',
-    'epochs': 1,
-    'batch_norm': False,
-    'optimizer': 'adam',
-    'normalize_input_data': False,
-    'normalize_mean_input_data': True,
-    'model': 'tamila',
-    'mass_normalization': False
-}
 
 data_dir = "/storage/data"
 volumes_file = "/storage/other/normalizedVolumes.petsc"
