@@ -263,14 +263,18 @@ p = {
     'mass_normalization': [True, False]
 }
 
-
-data_dir = "/storage/data"
+data_dir = "/storage/data/1d/smooth"
+validation_dir = "/storage/data/1d/validation"
 volumes_file = "/storage/other/normalizedVolumes.petsc"
 samples = np.inf
 
 print("Loading data")
-x, y = get_training_data_1d(data_dir, samples)
+x_train, y_train = get_training_data_1d(data_dir, samples)
 print("Loaded data")
+
+print("Loading validation data")
+x_val, y_val = get_training_data_1d(validation_dir, np.inf)
+printf("Loaded validation data")
 
 print("Loading volumes")
 data = np.reshape(get_volumes_1d(volumes_file), (1, 52749, 1))
@@ -286,8 +290,6 @@ parameter_combinations = product_dict(**p)
 best_model = None
 lowest_loss = np.inf
 for parameter_combination in parameter_combinations:
-    x_train, y_train = x, y
-    x_val, y_val = x, y
     model, out = cnn_partial(x_train, y_train, x_val, y_val, parameter_combination)
     model_loss = out.history['loss'][-1]
 
