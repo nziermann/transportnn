@@ -10,10 +10,15 @@ import subprocess
 import os
 import glob
 from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Layer, Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, Input, ZeroPadding3D
+from tensorflow.keras.layers import Layer, Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, Input, \
+    ZeroPadding3D, Activation, Add, Cropping3D
 import tensorflow.keras.metrics
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
+from tensorflow.keras.utils import plot_model
+import tensorflow.keras as keras
+import datetime
+from tensorboard.plugins.hparams import api as hp
 
 
 class LocalNetwork(Model):
@@ -156,7 +161,7 @@ class SimpleConvolutionAutoencoder(Model):
     def call(self, inputs, training=None, mask=None):
         x = inputs
 
-        if self.land_removal_start:
+        if hasattr(self, 'land_removal_start'):
             x = self.land_removal_start(x)
 
         for layer in self.sub_layers:
@@ -199,7 +204,7 @@ class ConvolutionalAutoencoder(Model):
 
         filter_exponent = config.get('filter_exponent', 4)
         filters = int(2 ** filter_exponent)
-        filters_2 = filters//2
+        filters_2 = filters // 2
         kernel_size = config.get('kernel_size', (5, 5, 5))
         activation = config.get('activation', 'relu')
         activation_last = config.get('activation_last', activation)
@@ -211,7 +216,7 @@ class ConvolutionalAutoencoder(Model):
 
         if batch_norm:
             self.batch_norm_1 = BatchNormalization()
-        self.conv_1 = Conv3D(filters, kernel_size, input_shape=input_shape, activation=activation, padding='same')
+        self.conv_1 = Conv3D(filters, kernel_size, activation=activation, padding='same')
         self.pooling_1 = pooling_type((1, 2, 2), padding='same')
 
         if batch_norm:
@@ -445,7 +450,7 @@ def predict_validations_split(models, validation_data, validation_data_split, co
     starts = map(lambda validation_element: validation_element[0], validation_data_split)
     starts = list(map(lambda start: start[np.newaxis], starts))
     samples = np.size(validation_data_split[0], 0)
-    predictions = np.full((samples-1, 15, 64, 128, 1), np.nan)
+    predictions = np.full((samples - 1, 15, 64, 128, 1), np.nan)
     for i in range(len(validation_data_split)):
         sub_predictions = []
         for j, model in enumerate(models, start=0):
