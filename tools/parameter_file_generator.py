@@ -34,11 +34,14 @@ def get_parameter_combinations(parameter_definitions):
     keys = parameter_definitions.keys()
     values = parameter_definitions.values()
     for instance in itertools.product(*values):
-        yield dict(zip(keys, instance))
+        wrapped_instance = map(lambda x: [x], instance)
+        yield dict(zip(keys, wrapped_instance))
 
 def train_for_parameter_file(parameter_file):
     docker_container = 'nziermann/transportnn/cnn-training'
-    subprocess.check_call(['docker', 'run', docker_container, '--parameters-file', parameter_file])
+    python = '/root/miniconda/bin/python3'
+    script_file = '/application/src/models/main.py'
+    subprocess.check_call([python, script_file, '--parameters-file', parameter_file])
 
 def copy_data(src, dst):
     shutil.copytree(src, dst)
