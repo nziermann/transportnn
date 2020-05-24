@@ -1,0 +1,12 @@
+{
+        "filter_exponent": [2, 4, 6],
+        "kernel_size": [3],
+        "activation": ["relu"],
+        "epochs": [5],
+        "batch_norm": [false],
+        "optimizer": ["adam"],
+        "mass_normalization": [true, false],
+        "land_removal": [true, false],
+        "land_removal_start": [true, false],
+        "model_type": ["climatenn"]
+}
