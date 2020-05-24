@@ -11,5 +11,6 @@ services:
             - ${BASE}/data:/storage
             - ${BASE}/src:/application
             - ${BASE}/tools:/tools
+            - ${BASE}/parameters:/parameters
             - ${BASE}/data/artifacts:/artifacts
             - ${BASE}/data/logs:/logs
