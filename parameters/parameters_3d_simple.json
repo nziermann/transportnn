@@ -1,9 +1,9 @@
 {
-        "filter_exponent": [2, 4, 6],
+        "filter_exponent": [2, 4, 5],
         "depth": [2, 4, 6],
         "kernel_size": [3],
         "activation": ["relu"],
-        "epochs": [5],
+        "epochs": [100],
         "batch_norm": [false],
         "optimizer": ["adam"],
         "mass_normalization": [true, false],
