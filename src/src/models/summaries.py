@@ -11,7 +11,7 @@ def get_model_summaries(config, parameters):
     for idx, parameters_selection in enumerate(parameters_product):
         model = get_model(data, parameters_selection)
         print(parameters_selection)
-        model.build((15, 64, 128, 1))
+        model.build((1, 15, 64, 128, 1))
         model.summary()
 
         from tensorflow.python.keras.layers import wrappers
