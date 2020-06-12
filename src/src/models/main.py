@@ -35,13 +35,15 @@ def main():
         'grid_file': '/storage/other/mitgcm-128x64-grid-file.nc',
         'job_dir': "/artifacts",
         # 'samples': np.inf
-        'samples': 220
+        'samples': 220,
+        'steps': 5
     }
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--parameters-file", help="")
     parser.add_argument("--data-dir", help="", default=defaults['data_dir'])
     parser.add_argument("--validation-data", default=defaults['validation_data'])
+    parser.add_argument("--steps", type=int, default=defaults['steps'])
     parser.add_argument("--predict-data", default=None)
     parser.add_argument("--job-dir", help="", default=defaults['job_dir'])
     parser.add_argument("--volumes-file", help="", default=defaults['volumes_file'])
@@ -64,7 +66,8 @@ def main():
         'grid_file': args.grid_file,
         'samples': args.samples,
         'validation_data': args.validation_data,
-        'predict_data': args.predict_data
+        'predict_data': args.predict_data,
+        'steps': args.steps
     }
 
     if args.download_from is not None:
