@@ -10,9 +10,10 @@ import hashlib
 # 1. Load parameter file
 # 2. Create new parameter file for every parameter combination
 # 3. Foreach parameter file do:
-# 3.1 Execute main.py
-# 3.2 Copy relevant files from data folder
-# 3.3 Add parameter file to copied data folder for later tracking purposes
+# 3.1 Check if parameter file was already trained skip if it was
+# 3.2 Execute main.py
+# 3.3 Copy relevant files from data folder
+# 3.4 Add parameter file to copied data folder for later tracking purposes
 
 # This should combat the problem of our hyperparameter test messing up
 # Additionally it will have the following benefits:
@@ -61,10 +62,20 @@ def main():
     for parameter_combination in parameter_combinations:
         parameter_hash = hashlib.sha1(json.dumps(parameter_combination).encode('utf-8')).hexdigest()
         parameter_dst_data_dir = os.path.join(args.dst_data_dir, parameter_hash)
+        parameter_dst_data_path = os.path.join(parameter_dst_data_dir, 'parameters.json')
 
+        #Skips already trained configurations
+        #Allows for taking up stopped training runs
+        #Or later extension without double traning
+        if os.path.isdir(parameter_dst_data_dir):
+            print(f'Skipping parameter combination with hash: {parameter_hash}')
+            continue
+
+        print(f'Starting training for parameter combination with hash: {parameter_hash}')
         write_parameters_to_path(parameter_combination, parameter_dst_path)
         train_for_parameter_file(parameter_dst_path)
         copy_data(args.src_data_dir, parameter_dst_data_dir)
+        write_parameters_to_path(parameter_combination, parameter_dst_data_path)
 
 
 if __name__ == "__main__":
