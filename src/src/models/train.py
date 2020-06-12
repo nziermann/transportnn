@@ -3,7 +3,38 @@ from functools import partial
 from src.visualization import save_data_for_visualization, save_as_netcdf
 from src.data import get_training_data, get_volumes, get_landmask, load_netcdf_data, split_data, combine_data
 import itertools
-from src.models import cnn
+from src.models import get_model
+import tensorflow
+import datetime
+import tensorflow.keras as keras
+from tensorboard.plugins.hparams import api as hp
+from src.models import multi_model
+
+
+def train(model, x_train, y_train, x_val, y_val, params):
+    print("Getting model with:")
+    print(params)
+
+    callbacks = []
+
+    # Define the Keras TensorBoard callback.
+    logdir = f'/logs/fit/{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}'
+    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
+    callbacks.append(tensorboard_callback)
+
+    hparams_callback = hp.KerasCallback(logdir, params)
+    callbacks.append(hparams_callback)
+
+    early_stopping_callback = keras.callbacks.EarlyStopping(patience=10)
+    callbacks.append(early_stopping_callback)
+
+    optimizer = params.get('optimizer', 'adam')
+    model.compile(optimizer=optimizer, loss='mse',
+                  metrics=[tensorflow.keras.metrics.mse, tensorflow.keras.metrics.mape, tensorflow.keras.metrics.mae])
+    out = model.fit(x_train, y_train, epochs=params['epochs'], callbacks=callbacks, validation_data=(x_val, y_val))
+
+    return out, model
+
 
 def train_models(config, parameters):
     print("Loading data")

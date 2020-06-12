@@ -1,11 +1,9 @@
 import numpy as np
 from src.layers import MassConversation3D, LandValueRemoval3D, LocallyConnected3D, WrapAroundPadding3D
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Layer, Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, ZeroPadding3D, Activation, Add, Cropping3D
-import tensorflow.keras.metrics
-import tensorflow.keras as keras
-import datetime
-from tensorboard.plugins.hparams import api as hp
+from tensorflow.keras.layers import TimeDistributed, LocallyConnected2D, ZeroPadding2D, Layer, Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, ZeroPadding3D, Activation, Add, Cropping3D
+import tensorflow as tf
+
 
 
 class LocalNetwork(Model):
@@ -371,33 +369,3 @@ def get_convolutional_autoencoder(data, config):
     model = SimpleConvolutionAutoencoder(config, data)
 
     return model
-
-
-def cnn(data, x_train, y_train, x_val, y_val, params):
-    print("Getting model with:")
-    print(params)
-
-    model = get_model(data, params)
-
-    # early_stopping_callback = tensorflow.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=10, patience=5,
-    #                                                        restore_best_weights=True)
-    # callbacks = [early_stopping_callback]
-    callbacks = []
-
-    # Define the Keras TensorBoard callback.
-    logdir = f'/logs/fit/{datetime.datetime.now().strftime("%Y%m%d-%H%M%S")}'
-    tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
-    callbacks.append(tensorboard_callback)
-
-    hparams_callback = hp.KerasCallback(logdir, params)
-    callbacks.append(hparams_callback)
-
-    early_stopping_callback = keras.callbacks.EarlyStopping()
-    callbacks.append(early_stopping_callback)
-
-    optimizer = params.get('optimizer', 'adam')
-    model.compile(optimizer=optimizer, loss='mse',
-                  metrics=[tensorflow.keras.metrics.mse, tensorflow.keras.metrics.mape, tensorflow.keras.metrics.mae])
-    out = model.fit(x_train, y_train, epochs=params['epochs'], callbacks=callbacks, validation_data=(x_val, y_val))
-
-    return out, model
