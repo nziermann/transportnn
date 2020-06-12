@@ -68,7 +68,6 @@ def combine_data(data):
 
 
 def get_training_data(data_dir, max_samples_wanted, wanted_time_difference=1):
-    print('Loading data')
     filenames = glob.glob(f'{data_dir}/*.nc')
     max_samples = 0
 
@@ -80,7 +79,6 @@ def get_training_data(data_dir, max_samples_wanted, wanted_time_difference=1):
     if max_samples_wanted < max_samples:
         max_samples = max_samples_wanted
 
-    print('Creating numpy arrays')
     x = np.full((max_samples, 15, 64, 128, 1), np.nan)
     y = np.full((max_samples, 15, 64, 128, 1), np.nan)
     current_samples = 0
