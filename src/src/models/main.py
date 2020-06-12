@@ -36,19 +36,21 @@ def main():
         'job_dir': "/artifacts",
         # 'samples': np.inf
         'samples': 220,
-        'steps': 5
+        'models_in_row': 1,
+        'step_length': 1
     }
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--parameters-file", help="")
     parser.add_argument("--data-dir", help="", default=defaults['data_dir'])
     parser.add_argument("--validation-data", default=defaults['validation_data'])
-    parser.add_argument("--steps", type=int, default=defaults['steps'])
+    parser.add_argument("--models-in-row", type=int, default=defaults['models_in_row'])
+    parser.add_argument("--step-length", type=int, default=defaults['step_length'])
     parser.add_argument("--predict-data", default=None)
     parser.add_argument("--job-dir", help="", default=defaults['job_dir'])
     parser.add_argument("--volumes-file", help="", default=defaults['volumes_file'])
     parser.add_argument("--grid-file", help="", default=defaults['grid_file'])
-    parser.add_argument("--samples", help="", default=defaults['samples'])
+    parser.add_argument("--samples", help="", type=int, default=defaults['samples'])
     parser.add_argument("--split", help="", action="store_true", default=False)
     parser.add_argument("--print-summaries", help="", action="store_true", default=False)
     parser.add_argument("--download-from", help="", default=None)
@@ -67,7 +69,8 @@ def main():
         'samples': args.samples,
         'validation_data': args.validation_data,
         'predict_data': args.predict_data,
-        'steps': args.steps
+        'models_in_row': args.models_in_row,
+        'step_length': args.step_length
     }
 
     if args.download_from is not None:

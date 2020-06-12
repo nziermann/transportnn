@@ -37,13 +37,14 @@ def train(model, x_train, y_train, x_val, y_val, params):
 
 
 def train_models(config, parameters):
-    steps = config.get('steps', 1)
+    step_length = config.get('step_length', 1)
+    models_in_row = config.get('models_in_row', 1)
 
     print("Loading data")
-    x_train, y_train = get_training_data(config['data_dir'], config['samples'], wanted_time_difference=steps)
+    x_train, y_train = get_training_data(config['data_dir'], config['samples'], wanted_time_difference=step_length)
     assert not np.any(np.isnan(x_train)), "x_train contains nan data"
     assert not np.any(np.isnan(y_train)), "y_train contains nan data"
-    x_val, y_val = get_training_data(config['validation_data'], np.inf, wanted_time_difference=steps)
+    x_val, y_val = get_training_data(config['validation_data'], np.inf, wanted_time_difference=step_length)
     assert not np.any(np.isnan(x_val)), "x_val contains nan data"
     assert not np.any(np.isnan(y_val)), "y_val contains nan data"
     print("Loaded data")
@@ -83,7 +84,7 @@ def train_models(config, parameters):
     for idx, parameter_combination in enumerate(parameter_combinations, start=1):
         print(f'Training combination {idx}/{num_combinations}')
 
-        model = multi_model(get_model(data, parameter_combination), steps)
+        model = multi_model(get_model(data, parameter_combination), models_in_row)
         out, model = train(model, x_train, y_train, x_val, y_val, parameter_combination)
 
         if first_model is None:
