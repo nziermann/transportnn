@@ -10,7 +10,7 @@ from tensorboard.plugins.hparams import api as hp
 
 class LocalNetwork(Model):
 
-    def __init__(self, config, data, reduce_resolution=True):
+    def __init__(self, config, data, reduce_resolution=False):
         super(LocalNetwork, self).__init__()
         kernel_size = config.get('kernel_size', (5, 5, 5))
         activation = config.get('activation', 'relu')
@@ -18,8 +18,11 @@ class LocalNetwork(Model):
         if config.get('land_removal_start', True):
             self.land_removal_start = LandValueRemoval3D(data['land'])
 
-        padding_size = (kernel_size[0] // 2, kernel_size[1] // 2, kernel_size[2] // 2)
-        stride_size = (1, 1, 1)
+        if type(kernel_size) is int:
+            kernel_size = [kernel_size, kernel_size]
+
+        padding_size = (kernel_size[0] // 2, kernel_size[1] // 2)
+        stride_size = (1, 1)
 
         if reduce_resolution:
             # Special handling for (3, 3, 3) kernel size
@@ -28,8 +31,28 @@ class LocalNetwork(Model):
         if reduce_resolution:
             stride_size = kernel_size
 
-        self.zero = ZeroPadding3D(padding_size)
-        self.local = LocallyConnected3D(1, kernel_size, activation=activation, strides=stride_size)
+        def mass_transport_regularizer(x):
+            return tf.abs(tf.reduce_sum(x))
+
+        self.zero = TimeDistributed(ZeroPadding2D(padding_size))
+
+        # self.locals_1 = []
+
+        # def create_local():
+        #     return LocallyConnected2D(1, kernel_size, activation=activation, strides=stride_size,
+        #                                                 # kernel_regularizer=mass_transport_regularizer,
+        #                                                 use_bias=False,
+        #                                                 kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.001))
+
+        # for i in range(0, 1):
+        #     local = create_local()
+        #     for j in range(0, 15):
+        #         self.locals_1.append(local)
+
+        # self.local = create_local():
+        self.local = TimeDistributed(LocallyConnected2D(1, kernel_size, activation=activation, strides=stride_size,
+                                                  # kernel_regularizer=mass_transport_regularizer,
+                                                  use_bias=True))
 
         if reduce_resolution:
             self.upsampling = UpSampling3D(stride_size)
@@ -47,6 +70,13 @@ class LocalNetwork(Model):
             x = self.land_removal_start(x)
 
         x = self.zero(x)
+
+        # output_list = []
+        # for i, local in enumerate(self.locals_1):
+        #     output_list.append(local(x[:, i, :, :, :]))
+
+        # x = tf.stack(output_list, 1)
+
         x = self.local(x)
 
         if hasattr(self, 'upsampling'):
@@ -137,7 +167,8 @@ class SimpleConvolutionAutoencoder(Model):
 
         self.padded_conv = PaddedConv3D(1, kernel_size, activation_last, batch_norm, False)
 
-        self.add = Add()
+        # Todo: Reactivate if convolutions are wanted
+        # self.add = Add()
 
         if config.get('land_removal', True):
             self.land_removal = LandValueRemoval3D(data['land'])
@@ -156,7 +187,8 @@ class SimpleConvolutionAutoencoder(Model):
 
         x = self.padded_conv(x, training=training)
 
-        x = self.add([inputs, x])
+        # Todo: Reactivate if convolutions are wanted
+        # x = self.add([inputs, x])
 
         if hasattr(self, 'land_removal'):
             x = self.land_removal(x)
