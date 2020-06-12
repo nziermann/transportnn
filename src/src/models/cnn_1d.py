@@ -11,7 +11,7 @@ from tensorflow.python.client import device_lib
 # pooling_type
 # activation
 # activation_last
-def get_model(data, config):
+def get_model_1d(data, config):
     model = config.get('model', 'climatenn')
     if model == 'simple':
         return get_simple_cnn(data, config)
