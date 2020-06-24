@@ -2,6 +2,7 @@ from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Conv1D, AveragePooling1D, UpSampling1D, BatchNormalization, Input, ZeroPadding1D
 import tensorflow.keras.metrics
 from src.layers import MassConversation1D
+from math import ceil
 
 from tensorflow.python.client import device_lib
 
@@ -60,6 +61,9 @@ def get_convolutional_autoencoder_tamila_deep(data, config):
 
     input = Input(shape=(inputs, 1))
 
+    filter_multiplier = config.get('filter_multiplier', 1)
+    activation = config.get('activation', 'relu')
+
     #Encoding
     sub_model = Sequential()
     # conv_1 = Conv1D(10, 3)(input)
@@ -92,36 +96,35 @@ def get_convolutional_autoencoder_tamila_deep(data, config):
     # zero_8 = ZeroPadding1D((1,2))(conv_13)
     # conv_14 = Conv1D(1, 3)(zero_8)
 
-    sub_model.add(Conv1D(10, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 10), 3, activation=activation))
     sub_model.add(AveragePooling1D(2))
-    sub_model.add(Conv1D(8, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 8), 3, activation=activation))
     sub_model.add(AveragePooling1D(2))
-    sub_model.add(Conv1D(6, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 6), 3, activation=activation))
     sub_model.add(AveragePooling1D(2))
-    sub_model.add(Conv1D(4, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 4), 3, activation=activation))
     sub_model.add(AveragePooling1D(2))
-    sub_model.add(Conv1D(2, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 2), 3, activation=activation))
     sub_model.add(AveragePooling1D(2))
-    sub_model.add(Conv1D(1, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 1), 3, activation=activation))
 
     # Recoding
     sub_model.add(ZeroPadding1D(4))
-    sub_model.add(Conv1D(1, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 1), 3, activation=activation))
     sub_model.add(UpSampling1D(2))
-    sub_model.add(Conv1D(2, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 2), 3, activation=activation))
     sub_model.add(UpSampling1D(2))
-    sub_model.add(Conv1D(4, 3))
-    sub_model.add(UpSampling1D(2))
-    sub_model.add(ZeroPadding1D(1))
-    sub_model.add(Conv1D(6, 3))
-    sub_model.add(UpSampling1D(2))
-    sub_model.add(Conv1D(8, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 4), 3, activation=activation))
     sub_model.add(UpSampling1D(2))
     sub_model.add(ZeroPadding1D(1))
-    sub_model.add(Conv1D(10, 3))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 6), 3, activation=activation))
+    sub_model.add(UpSampling1D(2))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 8), 3, activation=activation))
+    sub_model.add(UpSampling1D(2))
+    sub_model.add(ZeroPadding1D(1))
+    sub_model.add(Conv1D(ceil(filter_multiplier * 10), 3, activation=activation))
     sub_model.add(ZeroPadding1D((1, 2)))
     sub_model.add(Conv1D(1, 3))
-
 
     output = sub_model(input)
 
