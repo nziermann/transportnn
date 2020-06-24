@@ -7,7 +7,7 @@ import tensorflow as tf
 class MassConversation1D(Layer):
     def __init__(self, volume_data, **kwargs):
         self.volume_data = volume_data
-        self.volume_kernel = tf.Variable(self.volume_data, trainable=False)
+        self.volume_kernel = tf.Variable(self.volume_data, trainable=False, dtype=tf.float32)
         kwargs['trainable'] = False
         super(MassConversation1D, self).__init__(**kwargs)
 
