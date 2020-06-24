@@ -38,11 +38,10 @@ def get_parameter_combinations(parameter_definitions):
         wrapped_instance = map(lambda x: [x], instance)
         yield dict(zip(keys, wrapped_instance))
 
-def train_for_parameter_file(parameter_file):
+def train_for_parameter_file(parameter_file, script_file, script_options):
     docker_container = 'nziermann/transportnn/cnn-training'
     python = '/root/miniconda/bin/python3'
-    script_file = '/application/src/models/main.py'
-    subprocess.check_call([python, script_file, '--parameters-file', parameter_file])
+    subprocess.check_call([python, script_file, '--parameters-file', parameter_file] + script_options)
 
 def copy_data(src, dst):
     shutil.copytree(src, dst)
@@ -52,8 +51,14 @@ def main():
     parser.add_argument('-parameter-combinations-file', help='Location of file for parameter combinations')
     parser.add_argument('-src-data-dir')
     parser.add_argument('-dst-data-dir')
-
+    parser.add_argument('--model-1d', action="store_true")
     args = parser.parse_args()
+
+    script_file = '/application/src/models/main.py'
+
+    if args.model_1d:
+        script_file = '/application/src/models/main_1d.py'
+
 
     parameter_data = load_parameters(args.parameter_combinations_file)
     parameter_combinations = get_parameter_combinations(parameter_data)
@@ -64,6 +69,16 @@ def main():
         parameter_dst_data_dir = os.path.join(args.dst_data_dir, parameter_hash)
         parameter_dst_data_path = os.path.join(parameter_dst_data_dir, 'parameters.json')
 
+        script_options = []
+
+        if 'step_length' in parameter_combination:
+            script_options.append('--step-length')
+            script_options.append(args.step_length)
+
+        if 'models_in_row' in parameter_combination:
+            script_options.append('--models-in-row')
+            script_options.append(args.models_in_row)
+
         #Skips already trained configurations
         #Allows for taking up stopped training runs
         #Or later extension without double traning
@@ -73,7 +88,7 @@ def main():
 
         print(f'Starting training for parameter combination with hash: {parameter_hash}')
         write_parameters_to_path(parameter_combination, parameter_dst_path)
-        train_for_parameter_file(parameter_dst_path)
+        train_for_parameter_file(parameter_dst_path, script_file, script_options)
         copy_data(args.src_data_dir, parameter_dst_data_dir)
         write_parameters_to_path(parameter_combination, parameter_dst_data_path)
 
