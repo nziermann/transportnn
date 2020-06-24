@@ -1,9 +1,14 @@
 import numpy as np
 from src.models import train_models_1d
 
+from tensorflow.compat.v1 import ConfigProto
+from tensorflow.compat.v1 import InteractiveSession
 
 def main():
     p = {
+    config = ConfigProto()
+    config.gpu_options.allow_growth = True
+    session = InteractiveSession(config=config)
         'filter_exponent': [2, 4, 6],
         'kernel_size': [3, 5, 7],
         'activation': ['elu', 'relu'],
