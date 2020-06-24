@@ -327,7 +327,7 @@ class ConvolutionalAutoencoder(Model):
 
 
 def get_model(data, config):
-    model_type = config.get('model_type', 'climatenn')
+    model_type = config['model_type']
 
     if model_type == 'simple':
         return get_simple_convolutional_autoencoder(data, config)

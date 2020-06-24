@@ -13,13 +13,13 @@ from tensorflow.python.client import device_lib
 # activation
 # activation_last
 def get_model_1d(data, config):
-    model = config.get('model', 'climatenn')
+    model = config['model_type']
     if model == 'simple':
         return get_simple_cnn(data, config)
     return get_convolutional_autoencoder(data, config)
 
 def get_convolutional_autoencoder(data, config):
-    model = config.get('model', 'climatenn')
+    model = config['model_type']
     if model == 'tamila':
         return get_convolutional_autoencoder_tamila(data, config)
 
