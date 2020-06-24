@@ -1,14 +1,13 @@
-import numpy as np
-from src.layers import MassConversation3D, LandValueRemoval3D, LocallyConnected3D, WrapAroundPadding3D
+from src.layers import MassConversation3D, LandValueRemoval3D, WrapAroundPadding3D
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import TimeDistributed, LocallyConnected2D, ZeroPadding2D, Layer, Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, ZeroPadding3D, Activation, Add, Cropping3D
+from tensorflow.keras.layers import ZeroPadding1D, Cropping3D, Permute, Reshape, LocallyConnected1D, TimeDistributed, Concatenate, ZeroPadding2D, Layer, Conv3D, AveragePooling3D, UpSampling3D, BatchNormalization, ZeroPadding3D, Activation, Add, Cropping3D
 import tensorflow as tf
 
 
 
 class LocalNetwork(Model):
 
-    def __init__(self, config, data, reduce_resolution=False):
+    def __init__(self, config, data, reduce_resolution=False, residual=False):
         super(LocalNetwork, self).__init__()
         kernel_size = config.get('kernel_size', (5, 5, 5))
         activation = config.get('activation', 'relu')
@@ -29,32 +28,58 @@ class LocalNetwork(Model):
         if reduce_resolution:
             stride_size = kernel_size
 
-        def mass_transport_regularizer(x):
-            return tf.abs(tf.reduce_sum(x))
+        self.downsampling = AveragePooling3D(pool_size=(3, 4, 4))
 
-        self.zero = TimeDistributed(ZeroPadding2D(padding_size))
+        depth_padding = (1, 0, 0)
+        depth_permutation = (3, 2, 1, 4)
+        self.zero_depth = ZeroPadding3D(depth_padding)
+        self.permutation_depth_start = Permute(depth_permutation)
+        self.reshape_depth_start = Reshape(((15//3+2)*64//4*128//4, 1))
 
-        # self.locals_1 = []
+        self.zero_depth_1d = ZeroPadding1D(1)
+        self.local_depth = LocallyConnected1D(1, 3, activation=activation)
 
-        # def create_local():
-        #     return LocallyConnected2D(1, kernel_size, activation=activation, strides=stride_size,
-        #                                                 # kernel_regularizer=mass_transport_regularizer,
-        #                                                 use_bias=False,
-        #                                                 kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.001))
+        self.reshape_depth_end = Reshape((128//4, 64//4, 15//3+2, 1))
+        self.permutation_depth_end = Permute(depth_permutation)
 
-        # for i in range(0, 1):
-        #     local = create_local()
-        #     for j in range(0, 15):
-        #         self.locals_1.append(local)
+        self.cropping_depth = Cropping3D(depth_padding)
+        
+        longitude_padding = (0, 0, 1)
+        longitude_permutation = (1, 2, 3, 4)
+        self.zero_longitude = ZeroPadding3D(longitude_padding)
+        self.permutation_longitude_start = Permute(longitude_permutation)
+        self.reshape_longitude_start = Reshape((15//3*64//4*(128//4+2), 1))
 
-        # self.local = create_local():
-        self.local = TimeDistributed(LocallyConnected2D(1, kernel_size, activation=activation, strides=stride_size,
-                                                  # kernel_regularizer=mass_transport_regularizer,
-                                                  use_bias=True))
+        self.zero_longitude_1d = ZeroPadding1D(1)
+        self.local_longitude = LocallyConnected1D(1, 3, activation=activation)
+
+        self.reshape_longitude_end = Reshape((15//3, 64//4, 128//4+2, 1))
+        self.permutation_longitude_end = Permute(longitude_permutation)
+
+        self.cropping_longitude = Cropping3D(longitude_padding)
+        
+        latitude_padding = (0, 1, 0)
+        latitude_permutation = (1, 3, 2, 4)
+        self.zero_latitude = ZeroPadding3D(latitude_padding)
+        self.permutation_latitude_start = Permute(latitude_permutation)
+        self.reshape_latitude_start = Reshape((15//3*(64//4+2)*128//4, 1))
+
+        self.zero_latitude_1d = ZeroPadding1D(1)
+        self.local_latitude = LocallyConnected1D(1, 3, activation=activation)
+
+        self.reshape_latitude_end = Reshape((15//3, 128//4, 64//4+2, 1))
+        self.permutation_latitude_end = Permute(latitude_permutation)
+
+        self.cropping_latitude = Cropping3D(latitude_padding)
+
+        self.upsampling = UpSampling3D(size=(3, 4, 4))
 
         if reduce_resolution:
             self.upsampling = UpSampling3D(stride_size)
             self.cropping = Cropping3D(padding_size)
+
+        if residual:
+            self.residual = Add()
 
         if config.get('land_removal', True):
             self.land_removal = LandValueRemoval3D(data['land'])
@@ -67,21 +92,54 @@ class LocalNetwork(Model):
         if hasattr(self, 'land_removal_start'):
             x = self.land_removal_start(x)
 
-        x = self.zero(x)
+        x = self.downsampling(x)
 
-        # output_list = []
-        # for i, local in enumerate(self.locals_1):
-        #     output_list.append(local(x[:, i, :, :, :]))
+        x = self.zero_depth(x)
+        x = self.permutation_depth_start(x)
+        x = self.reshape_depth_start(x)
 
-        # x = tf.stack(output_list, 1)
+        x = self.zero_depth_1d(x)
+        x = self.local_depth(x)
 
-        x = self.local(x)
+        x = self.reshape_depth_end(x)
+        x = self.permutation_depth_end(x)
 
-        if hasattr(self, 'upsampling'):
-            x = self.upsampling(x)
+        x = self.cropping_depth(x)
+
+        x = self.zero_longitude(x)
+        x = self.permutation_longitude_start(x)
+        x = self.reshape_longitude_start(x)
+
+        x = self.zero_longitude_1d(x)
+        x = self.local_longitude(x)
+
+        x = self.reshape_longitude_end(x)
+        x = self.permutation_longitude_end(x)
+
+        x = self.cropping_longitude(x)
+
+        x = self.zero_latitude(x)
+        x = self.permutation_latitude_start(x)
+        x = self.reshape_latitude_start(x)
+
+        x = self.zero_latitude_1d(x)
+        x = self.local_latitude(x)
+
+        x = self.reshape_latitude_end(x)
+        x = self.permutation_latitude_end(x)
+
+        x = self.cropping_latitude(x)
+
+        x = self.upsampling(x)
+
+        #if hasattr(self, 'upsampling'):
+        #    x = self.upsampling(x)
 
         if hasattr(self, 'cropping'):
             x = self.cropping(x)
+
+        if hasattr(self, 'residual'):
+            x = self.residual([x, inputs])
 
         if hasattr(self, 'land_removal'):
             x = self.land_removal(x)
