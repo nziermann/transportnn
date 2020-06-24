@@ -8,10 +8,12 @@ def multi_model(model, steps):
         return model
 
     print(f'Model is of type: {type(model)}')
-    input = Input()
-    output = input
+    input = Input(shape=(15, 64, 128, 1))
+    x = input
 
     for i in range(steps):
-        output = model(output)
+        x = model(x)
+
+    output = x
 
     return Model(inputs=input, outputs=output)
