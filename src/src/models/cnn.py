@@ -106,7 +106,7 @@ class PaddedConv3D(Layer):
 
         self.zero_padding = ZeroPadding3D((1, 0, 0))
         self.wrap_around_padding = WrapAroundPadding3D((0, 1, 1))
-        self.conv = Conv3D(filters, kernel_size, activation=None)
+        self.conv = Conv3D(filters, kernel_size, activation=activation)
 
         if residual:
             self.add = Add()
