@@ -44,6 +44,10 @@ def main():
         with open(args.parameters_file, "r") as parameters_file:
             parameters = json.load(parameters_file)
 
+    #Add step length and models in row for easier evaluation
+    parameters['step_length'] = [args.step_length]
+    parameters['models_in_row'] = [args.models_in_row]
+
     train_models_1d(config, parameters)
 
 
