@@ -28,7 +28,15 @@ def train(model, x_train, y_train, x_val, y_val, params):
     early_stopping_callback = keras.callbacks.EarlyStopping(patience=10)
     callbacks.append(early_stopping_callback)
 
-    optimizer = params.get('optimizer', 'adam')
+    learning_rate = params['learning_rate']
+    optimizer = params['optimizer']
+
+    if optimizer == 'adam':
+        optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+    else:
+        print("Other optimizer currently not supported")
+        exit()
+
     model.compile(optimizer=optimizer, loss='mse',
                   metrics=[tensorflow.keras.metrics.mse, tensorflow.keras.metrics.mape, tensorflow.keras.metrics.mae])
     out = model.fit(x_train, y_train, epochs=params['epochs'], callbacks=callbacks, validation_data=(x_val, y_val))
