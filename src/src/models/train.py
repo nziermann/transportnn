@@ -95,24 +95,24 @@ def train_models(config, parameters):
         model = multi_model(get_model(data, parameter_combination), models_in_row)
         out, model = train(model, x_train, y_train, x_val, y_val, parameter_combination)
 
-        if first_model is None:
-            first_model = model
+        #if first_model is None:
+        #    first_model = model
 
         model_loss = out.history['loss'][-1]
         print(f'Model loss: {model_loss}')
 
-        if model_loss < lowest_loss:
-            best_model, lowest_loss = model, model_loss
+        #if model_loss < lowest_loss:
+        #    best_model, lowest_loss = model, model_loss
 
-    if best_model is None:
-        best_model = first_model
+    #if best_model is None:
+    #     best_model = first_model
 
-    if predict_data is not None:
-        predict_validations(best_model, predict_data, config)
+    # if predict_data is not None:
+    #     predict_validations(best_model, predict_data, config)
 
-    best_model.save(f'{config["job_dir"]}/best_model', save_format='tf')
-    save_data_for_visualization(best_model, config['data_dir'], config['samples'], config['grid_file'],
-                                config['job_dir'])
+    # best_model.save(f'{config["job_dir"]}/best_model', save_format='tf')
+    # save_data_for_visualization(best_model, config['data_dir'], config['samples'], config['grid_file'],
+    #                            config['job_dir'])
 
 
 def predict_validations(model, validation_data, config):
