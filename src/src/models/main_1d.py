@@ -1,14 +1,16 @@
 import numpy as np
 from src.models import train_models_1d
-
+import argparse
+import json
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
 
 def main():
-    p = {
     config = ConfigProto()
     config.gpu_options.allow_growth = True
     session = InteractiveSession(config=config)
+
+    parameters = {
         'filter_exponent': [2, 4, 6],
         'kernel_size': [3, 5, 7],
         'activation': ['elu', 'relu'],
@@ -26,10 +28,23 @@ def main():
         'data_dir': "/storage/data/1d/smooth",
         'validation_dir': "/storage/data/1d/validation",
         'volumes_file': "/storage/other/normalizedVolumes.petsc",
-        'samples': np.inf
+        'samples': 220,
+        'step_length': 1,
+        'models_in_row': 1
     }
 
-    train_models_1d(config, p)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--parameters-file", help="")
+    parser.add_argument("--step-length", help="", default=config['step_length'])
+    parser.add_argument("--models-in-row", help="", default=config['models_in_row'])
+
+    args = parser.parse_args()
+
+    if not args.parameters_file is None:
+        with open(args.parameters_file, "r") as parameters_file:
+            parameters = json.load(parameters_file)
+
+    train_models_1d(config, parameters)
 
 
 if __name__ == "__main__":
