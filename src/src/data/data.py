@@ -122,8 +122,11 @@ def get_training_data_1d(data_dir, max_samples_wanted, wanted_time_difference=1)
     if max_samples_wanted < max_samples:
         max_samples = max_samples_wanted
 
+    print("Test before")
+    print(f'Samples: {max_samples}')
     x = np.full((max_samples, 52749, 1), np.nan)
     y = np.full((max_samples, 52749, 1), np.nan)
+    print("Test after")
     current_samples = 0
 
     for key, filename in enumerate(filenames):

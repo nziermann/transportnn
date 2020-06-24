@@ -5,6 +5,7 @@ from src.models import get_model
 
 
 def get_model_summaries(config, parameters):
+    print("Generating models for summaries")
     data = get_dummy_data()
     parameters_product = product_dict(**parameters)
 
