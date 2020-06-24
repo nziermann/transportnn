@@ -136,6 +136,7 @@ config_template_file_location = args.template_config_file_location
 config_file_location = args.config_file_location
 normalized_volume_file = args.normalized_volume_file
 grid_file = args.grid_file
+spinup_count = args.spinup_count
 vector_size = 52749
 number_of_runs = args.number_of_runs
 length_of_run = args.length_of_run
