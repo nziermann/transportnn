@@ -1,13 +1,15 @@
 {
-        "filter_exponent": [2, 4, 5],
-        "depth": [2, 4, 6],
-        "kernel_size": [3],
-        "activation": ["relu"],
-        "epochs": [100],
-        "batch_norm": [false],
-        "optimizer": ["adam"],
-        "mass_normalization": [true, false],
-        "land_removal": [true, false],
-        "land_removal_start": [true, false],
-        "model_type": ["simple"]
+	  "version": [2],
+    "model_type": ["simple"],
+    "kernel_size": [3],
+    "activation": ["relu"],
+    "epochs": [100],
+    "batch_norm": [false],
+    "optimizer": ["adam"],
+    "filter_exponent": [2, 4],
+    "depth": [2, 4],
+    "mass_normalization": [true, false],
+    "land_removal": [true, false],
+    "land_removal_start": [true, false],
+	  "learning_rate": [0.0005, 0.001, 0.002]
 }
