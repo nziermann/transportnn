@@ -338,7 +338,11 @@ def get_model(data, config):
     if model_type == 'local':
         return get_local_network(data, config)
 
-    return get_convolutional_autoencoder(data, config)
+    if model_type == 'climatenn':
+        return get_convolutional_autoencoder(data, config)
+
+    print("Unknown model type wanted")
+    exit()
 
 
 def get_none_model(data, config):

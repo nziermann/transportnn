@@ -26,7 +26,11 @@ def get_convolutional_autoencoder(data, config):
     if model == 'tamila_deep':
         return get_convolutional_autoencoder_tamila_deep(data, config)
 
-    return get_convolutional_autoencoder_climatenn(data, config)
+    if model == 'climatenn_1d':
+        return get_convolutional_autoencoder_climatenn(data, config)
+
+    print(f'"Unknown model type {model} requested')
+    exit()
 
 def get_simple_cnn(data, config):
     depth = config.get('depth', 6)
