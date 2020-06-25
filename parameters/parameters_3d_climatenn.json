@@ -6,7 +6,7 @@
     "epochs": [100],
     "batch_norm": [false],
     "optimizer": ["adam"],
-    "filter_exponent": [2,4],
+    "filter_exponent": [2,3],
     "mass_normalization": [true, false],
     "land_removal": [true, false],
     "land_removal_start": [true, false],
