@@ -2,15 +2,18 @@ import numpy as np
 import itertools
 from tensorflow.keras.utils import plot_model
 from src.models import get_model
+from src.models.multi import multi_model
 
 
 def get_model_summaries(config, parameters):
     print("Generating models for summaries")
     data = get_dummy_data()
     parameters_product = product_dict(**parameters)
+    models_in_row = config.get('models_in_row', 1)
 
     for idx, parameters_selection in enumerate(parameters_product):
-        model = get_model(data, parameters_selection)
+        model = multi_model(get_model(data, parameters_selection), models_in_row)
+        #model = get_model(data, parameters_selection)
         print(parameters_selection)
         model.build((1, 15, 64, 128, 1))
         model.summary()

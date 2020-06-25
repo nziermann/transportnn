@@ -36,7 +36,7 @@ class MassConversation3D(Layer):
         vector = K.transpose(vector)
         normalized_output = output * vector
 
-        return [normalized_output]
+        return normalized_output
 
     def get_config(self):
         return {'volume_data': self.volume_data}

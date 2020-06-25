@@ -1,6 +1,6 @@
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input
-
+from tensorflow.keras.layers import Input, Reshape
+import tensorflow as tf
 
 def multi_model(model, steps):
     # Allow better summary for this model
@@ -16,4 +16,4 @@ def multi_model(model, steps):
 
     output = x
 
-    return Model(inputs=input, outputs=output)
+    return Model(input, output)
