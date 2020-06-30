@@ -41,7 +41,11 @@ def get_parameter_combinations(parameter_definitions):
 def train_for_parameter_file(parameter_file, script_file, script_options):
     docker_container = 'nziermann/transportnn/cnn-training'
     python = '/root/miniconda/bin/python3'
-    subprocess.check_call([python, script_file, '--parameters-file', parameter_file] + script_options)
+    script_call = [
+        python, script_file, '--parameters-file', parameter_file
+    ]
+    script_call.extend(script_options)
+    subprocess.check_call(script_call)
 
 def copy_data(src, dst):
     shutil.copytree(src, dst)
@@ -73,11 +77,11 @@ def main():
 
         if 'step_length' in parameter_combination:
             script_options.append('--step-length')
-            script_options.append(args.step_length)
+            script_options.append(str(parameter_combination['step_length'][0]))
 
         if 'models_in_row' in parameter_combination:
             script_options.append('--models-in-row')
-            script_options.append(args.models_in_row)
+            script_options.append(str(parameter_combination['models_in_row'][0]))
 
         #Skips already trained configurations
         #Allows for taking up stopped training runs

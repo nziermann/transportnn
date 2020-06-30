@@ -5,9 +5,102 @@ import os
 import glob
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
-from src.models import get_model_summaries, train_models, train_split_model
+from src.models import get_model_summaries, train_models, train_split_model, train_models_1d
+import numpy as np
+import tensorflow as tf
 
 def main():
+    #Numpy test
+    #for local network idea
+    a = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    print(a)
+
+    a = np.pad(a, ((1, 1), (0, 0), (0, 0)), 'constant', constant_values=0)
+    print(a)
+
+    depth_permutation = (2, 1, 0)
+    a = np.transpose(a, depth_permutation)
+    print(a)
+
+    a = np.reshape(a, 16)
+    print(a)
+
+    #Perform local operation on a
+    #Sum with left and right neighbour
+    a_1 = np.roll(a, 1)
+    a_2 = np.roll(a, -1)
+
+    a = a + a_1 + a_2
+
+    a = np.reshape(a, (2, 2, 4))
+    a = np.transpose(a, depth_permutation)
+
+    # Is cropping layer in network code
+    a = a[1:3, :, :]
+
+    print(a)
+
+    # Perform effect on different axis for test purposes
+    print("Second test")
+    #a = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    print(a)
+    a = np.pad(a, ((0, 0), (0, 0), (1, 1)), 'constant', constant_values=0)
+    print(a)
+
+    longitude_permutation = (0, 1, 2)
+    a = np.transpose(a, longitude_permutation)
+    print(a)
+    a = np.reshape(a, 16)
+    print(a)
+
+    # Perform local operation on a
+    # Sum with left and right neighbour
+    a_1 = np.roll(a, 1)
+    a_2 = np.roll(a, -1)
+
+    a = a + a_1 + a_2
+
+    a = np.reshape(a, (2, 2, 4))
+    a = np.transpose(a, longitude_permutation)
+
+    # Is cropping layer in network code
+    a = a[:, :, 1:3]
+
+    print("Reconstructed: ")
+    print(a)
+
+    # Perform effect on last remaining axis for test purposes
+    print("Third test")
+    #a = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+    print(a)
+    a = np.pad(a, ((0, 0), (1, 1), (0, 0)), 'constant', constant_values=0)
+    print(a)
+
+    latitude_permutation = (0, 2, 1)
+    a = np.transpose(a, latitude_permutation)
+    print(a)
+    a = np.reshape(a, 16)
+    print(a)
+
+    # Perform local operation on a
+    # Sum with left and right neighbour
+    a_1 = np.roll(a, 1)
+    a_2 = np.roll(a, -1)
+
+    a = a + a_1 + a_2
+
+    a = np.reshape(a, (2, 2, 4))
+    a = np.transpose(a, latitude_permutation)
+
+    # Is cropping layer in network code
+    a = a[:, 1:3, :]
+
+    print("Reconstructed: ")
+    print(a)
+
+    #exit()
+
+
     config = ConfigProto()
     config.gpu_options.allow_growth = True
     session = InteractiveSession(config=config)
@@ -27,6 +120,22 @@ def main():
         'model_type': ['simple', 'climatenn']
         #'model_type': ['local']
     }
+
+    parameters = {
+        'kernel_size': [3],
+        'activation': ['relu'],
+        # 'epochs': [100],
+        'epochs': [1000],
+        'batch_norm': [False],
+        'optimizer': ['adam'],
+        'learning_rate': [0.0002, 0.001, 0.005],
+        'mass_normalization': [True],
+        'land_removal': [True],
+        'land_removal_start': [True],
+        #'model_type': ['simple']
+        'model_type': ['simple']
+    }
+
 
     defaults = {
         'data_dir': "/storage/data/3d/smooth",

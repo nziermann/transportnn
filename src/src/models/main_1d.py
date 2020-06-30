@@ -4,6 +4,7 @@ import argparse
 import json
 from tensorflow.compat.v1 import ConfigProto
 from tensorflow.compat.v1 import InteractiveSession
+from src.models import get_model_summaries_1d
 
 def main():
     config = ConfigProto()
@@ -20,7 +21,9 @@ def main():
         'optimizer': ['adam'],
         #'normalize_input_data': [False],
         #'normalize_mean_input_data': [True],
-        'model': ['climatenn', 'tamila', 'tamila_deep'],
+        #'model': ['climatenn', 'tamila', 'tamila_deep'],
+        'model_type': ['tamila_deep'],
+        'filter_multiplier': [2],
         'mass_normalization': [True, False]
     }
 
@@ -37,6 +40,7 @@ def main():
     parser.add_argument("--parameters-file", help="")
     parser.add_argument("--step-length", help="", default=config['step_length'])
     parser.add_argument("--models-in-row", help="", default=config['models_in_row'])
+    parser.add_argument("--print-summaries", help="", action='store_true', default=False)
 
     args = parser.parse_args()
 
@@ -47,6 +51,11 @@ def main():
     #Add step length and models in row for easier evaluation
     parameters['step_length'] = [args.step_length]
     parameters['models_in_row'] = [args.models_in_row]
+
+
+    if args.print_summaries:
+        get_model_summaries_1d(config, parameters)
+        exit()
 
     train_models_1d(config, parameters)
 

@@ -373,7 +373,7 @@ class ConvolutionalAutoencoder(Model):
             x = self.land_removal(x)
 
         if hasattr(self, 'mass_normalization'):
-            x = self.mass_normalization(x)
+            x = self.mass_normalization([inputs, x])
 
         return x
 
@@ -428,6 +428,6 @@ def get_simple_convolutional_autoencoder(data, config):
 # activation
 # activation_last
 def get_convolutional_autoencoder(data, config):
-    model = SimpleConvolutionAutoencoder(config, data)
+    model = ConvolutionalAutoencoder(config, data)
 
     return model
