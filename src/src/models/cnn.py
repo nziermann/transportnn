@@ -87,7 +87,7 @@ class LocalNetwork(Model):
         if config.get('mass_normalization', True):
             self.mass_normalization = MassConversation3D(data['volumes'])
 
-    def call(self, inputs):
+    def call(self, inputs, training=None, mask=None):
         x = inputs
         if hasattr(self, 'land_removal_start'):
             x = self.land_removal_start(x)
@@ -189,13 +189,15 @@ class PaddedConv3D(Layer):
         return x
 
     def get_config(self):
-        return {
+        config = super(PaddedConv3D, self).get_config()
+        config.update({
             'filters': self.filters,
             'kernel_size': self.kernel_size,
             'activation': self.activation,
             'batch_norm': self.batch_norm,
             'residual': self.residual
-        }
+        })
+        return config
 
 
 class SimpleConvolutionAutoencoder(Model):
@@ -255,10 +257,13 @@ class SimpleConvolutionAutoencoder(Model):
         return x
 
     def get_config(self):
-        return {
+        config = super(SimpleConvolutionAutoencoder, self).get_config()
+        config.update({
             'config': self.config,
             'data': self.data
-        }
+        })
+
+        return config
 
 
 class NoneModel(Model):
@@ -378,10 +383,12 @@ class ConvolutionalAutoencoder(Model):
         return x
 
     def get_config(self):
-        return {
+        config = super(CustomLayer, self).get_config()
+        config.update({
             'config': self.config,
             'data': self.data
-        }
+        })
+        return config
 
 
 def get_model(data, config):
