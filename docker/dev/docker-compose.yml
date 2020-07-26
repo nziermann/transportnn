@@ -3,7 +3,7 @@ services:
     cnn-training:
         runtime: nvidia
         command: tail -f /dev/null
-        mem_limit: 12G
+        #mem_limit: 12G
         build:
             context: ${BASE}
             dockerfile: ./docker/cnn-training/Dockerfile
