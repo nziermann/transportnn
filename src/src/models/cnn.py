@@ -410,7 +410,7 @@ class ConvolutionalAutoencoder(Model):
         return x
 
     def get_config(self):
-        config = super(CustomLayer, self).get_config()
+        config = super(ConvolutionalAutoencoder, self).get_config()
         config.update({
             'config': self.config,
             'data': self.data
