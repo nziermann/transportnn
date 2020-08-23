@@ -151,13 +151,12 @@ class LocalNetwork(Model):
 
 
 class PaddedConv3D(Layer):
-    def __init__(self, filters, kernel_size, activation, batch_norm, residual):
+    def __init__(self, filters, kernel_size, activation, batch_norm):
         super(PaddedConv3D, self).__init__()
         self.filters = filters
         self.kernel_size = kernel_size
         self.activation = activation
         self.batch_norm = batch_norm
-        self.residual = residual
 
         if batch_norm:
             self.batch_norm_layer = BatchNormalization()
@@ -165,11 +164,6 @@ class PaddedConv3D(Layer):
         self.zero_padding = ZeroPadding3D((1, 0, 0))
         self.wrap_around_padding = WrapAroundPadding3D((0, 1, 1))
         self.conv = Conv3D(filters, kernel_size, activation=activation)
-
-        if residual:
-            self.add = Add()
-
-        self.activation = Activation(activation)
 
     def call(self, inputs, training=None):
         x = inputs
@@ -181,11 +175,6 @@ class PaddedConv3D(Layer):
         x = self.wrap_around_padding(x)
         x = self.conv(x)
 
-        if hasattr(self, 'add'):
-            x = self.add([x, inputs])
-
-        x = self.activation(x)
-
         return x
 
     def get_config(self):
@@ -194,8 +183,7 @@ class PaddedConv3D(Layer):
             'filters': self.filters,
             'kernel_size': self.kernel_size,
             'activation': self.activation,
-            'batch_norm': self.batch_norm,
-            'residual': self.residual
+            'batch_norm': self.batch_norm
         })
         return config
 
@@ -206,6 +194,7 @@ class SimpleConvolutionAutoencoder(Model):
         super(SimpleConvolutionAutoencoder, self).__init__()
         self.config = config
         self.data = data
+        self.residual = config.get('residual', False)
 
         filter_exponent = config.get('filter_exponent', 4)
         filters = int(2 ** filter_exponent)
@@ -219,14 +208,17 @@ class SimpleConvolutionAutoencoder(Model):
             self.land_removal_start = LandValueRemoval3D(data['land'])
 
         self.sub_layers = []
+        self.sub_activations = []
         for i in range(depth):
-            padded_conv = PaddedConv3D(filters, kernel_size, activation, batch_norm, False)
+            padded_conv = PaddedConv3D(filters, kernel_size, None, batch_norm)
+            activation = Activation(activation)
             self.sub_layers.append(padded_conv)
+            self.sub_activations.append(activation)
 
-        self.padded_conv = PaddedConv3D(1, kernel_size, activation_last, batch_norm, False)
+        self.padded_conv = PaddedConv3D(1, kernel_size, activation_last, batch_norm)
 
-        # Todo: Reactivate if convolutions are wanted
-        # self.add = Add()
+        if self.residual:
+            self.add = Add()
 
         if config.get('land_removal', True):
             self.land_removal = LandValueRemoval3D(data['land'])
@@ -240,13 +232,23 @@ class SimpleConvolutionAutoencoder(Model):
         if hasattr(self, 'land_removal_start'):
             x = self.land_removal_start(x)
 
-        for layer in self.sub_layers:
+        if self.residual:
+            shortcut = x
+
+        for i, layer in enumerate(self.sub_layers, start=1):
             x = layer(x)
+            current_residual = self.residual and i%2
+
+            if current_residual:
+                x = self.add([x, shortcut])
+
+            activation = self.sub_activations.__getitem__(i-1)
+            x = activation(x)
+
+            if current_residual:
+                shortcut = x
 
         x = self.padded_conv(x, training=training)
-
-        # Todo: Reactivate if convolutions are wanted
-        # x = self.add([inputs, x])
 
         if hasattr(self, 'land_removal'):
             x = self.land_removal(x)
@@ -260,7 +262,8 @@ class SimpleConvolutionAutoencoder(Model):
         config = super(SimpleConvolutionAutoencoder, self).get_config()
         config.update({
             'config': self.config,
-            'data': self.data
+            'data': self.data,
+            'residual': self.residual
         })
 
         return config
