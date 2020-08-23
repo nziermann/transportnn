@@ -299,38 +299,50 @@ class ConvolutionalAutoencoder(Model):
 
         if batch_norm:
             self.batch_norm_1 = BatchNormalization()
-        self.conv_1 = Conv3D(filters, kernel_size, activation=activation, padding='same')
-        self.pooling_1 = pooling_type((1, 2, 2), padding='same')
+        self.pw_1 = WrapAroundPadding3D((0, 1, 1))
+        self.pz_1 = ZeroPadding3D((1, 0, 0))
+        self.conv_1 = Conv3D(filters, kernel_size, activation=activation)
+        self.pooling_1 = pooling_type((1, 2, 2))
 
         if batch_norm:
             self.batch_norm_2 = BatchNormalization()
-        self.conv_2 = Conv3D(filters_2, kernel_size, activation=activation, padding='same')
-        self.pooling_2 = pooling_type((1, 2, 2), padding='same')
+        self.pw_2 = WrapAroundPadding3D((0, 1, 1))
+        self.pz_2 = ZeroPadding3D((1, 0, 0))
+        self.conv_2 = Conv3D(filters_2, kernel_size, activation=activation)
+        self.pooling_2 = pooling_type((1, 2, 2))
 
         if batch_norm:
             self.batch_norm_3 = BatchNormalization()
-        self.conv_3 = Conv3D(filters_2, kernel_size, activation=activation, padding='same')
-        self.pooling_3 = pooling_type((3, 2, 2), padding='same')
+        self.pw_3 = WrapAroundPadding3D((0, 1, 1))
+        self.pz_3 = ZeroPadding3D((1, 0, 0))
+        self.conv_3 = Conv3D(filters_2, kernel_size, activation=activation)
+        self.pooling_3 = pooling_type((3, 2, 2))
 
         # at this point the representation is (4, 4, 8) i.e. 128-dimensional
         if batch_norm:
             self.batch_norm_4 = BatchNormalization()
-        self.conv_4 = Conv3D(filters_2, kernel_size, activation=activation, padding='same')
+        self.pw_4 = WrapAroundPadding3D((0, 1, 1))
+        self.pz_4 = ZeroPadding3D((1, 0, 0))
+        self.conv_4 = Conv3D(filters_2, kernel_size, activation=activation)
         self.up_4 = UpSampling3D((3, 2, 2))
 
         if batch_norm:
             self.batch_norm_5 = BatchNormalization()
-        self.conv_5 = Conv3D(filters_2, kernel_size, activation=activation, padding='same')
+        self.pw_5 = WrapAroundPadding3D((0, 1, 1))
+        self.pz_5 = ZeroPadding3D((1, 0, 0))
+        self.conv_5 = Conv3D(filters_2, kernel_size, activation=activation)
         self.up_5 = UpSampling3D((1, 2, 2))
 
         if batch_norm:
             self.batch_norm_6 = BatchNormalization()
-        self.conv_6 = Conv3D(filters, kernel_size, activation=activation, padding='same')
+        self.pw_6 = WrapAroundPadding3D((0, 1, 1))
+        self.pz_6 = ZeroPadding3D((1, 0, 0))
+        self.conv_6 = Conv3D(filters, kernel_size, activation=activation)
         self.up_6 = UpSampling3D((1, 2, 2))
 
         # cnn = sub_model(input)
         # output = Conv3D(1, kernel_size, activation=activation_last, padding='same')(cnn)
-        self.output_conv = Conv3D(1, kernel_size, activation=activation_last, padding='same')
+        self.output_conv = Conv3D(1, kernel_size, activation=activation_last)
 
         if config.get('land_removal', True):
             self.land_removal = LandValueRemoval3D(data['land'])
@@ -346,32 +358,44 @@ class ConvolutionalAutoencoder(Model):
 
         if hasattr(self, 'batch_norm_1'):
             x = self.batch_norm_1(x, training=training)
+        x = self.pw_1(x)
+        x = self.pz_1(x)
         x = self.conv_1(x)
         x = self.pooling_1(x)
 
         if hasattr(self, 'batch_norm_2'):
             x = self.batch_norm_2(x, training=training)
+        x = self.pw_2(x)
+        x = self.pz_2(x)
         x = self.conv_2(x)
         x = self.pooling_2(x)
 
         if hasattr(self, 'batch_norm_3'):
             x = self.batch_norm_3(x, training=training)
+        x = self.pw_3(x)
+        x = self.pz_3(x)
         x = self.conv_3(x)
         x = self.pooling_3(x)
 
         # at this point the representation is (4, 4, 8) i.e. 128-dimensional
         if hasattr(self, 'batch_norm_4'):
             x = self.batch_norm_4(x, training=training)
+        x = self.pw_4(x)
+        x = self.pz_4(x)
         x = self.conv_4(x)
         x = self.up_4(x)
 
         if hasattr(self, 'batch_norm_5'):
             x = self.batch_norm_5(x, training=training)
+        x = self.pw_5(x)
+        x = self.pz_5(x)
         x = self.conv_5(x)
         x = self.up_5(x)
 
         if hasattr(self, 'batch_norm_6'):
             x = self.batch_norm_6(x, training=training)
+        x = self.pw_6(x)
+        x = self.pz_6(x)
         x = self.conv_6(x)
         x = self.up_6(x)
 
